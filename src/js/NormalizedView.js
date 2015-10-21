@@ -146,6 +146,7 @@
                 setScalar(this, element, "collapsible");
                 setScalar(this, element, "legendStyle");
                 setScalar(this, element, "toolbarStyle");
+                setScalar(this, element, "actionbarStyle");
                 setScalar(this, element, "buttonStyle");
                 setScalar(this, element, "toolbarSticky");
                 setScalar(this, element, "globalTemplate");
