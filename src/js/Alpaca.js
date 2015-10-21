@@ -687,6 +687,18 @@
             return copy;
         },
 
+        copyInto: function(target, source)
+        {
+            for (var i in source)
+            {
+                if (source.hasOwnProperty(i) && !this.isFunction(this[i]))
+                {
+                    target[i] = source[i];
+                }
+            }
+        },
+
+
         /**
          * Retained for legacy purposes.  Alias for copyOf().
          *
@@ -1601,9 +1613,12 @@
                 if (Alpaca.isArray(val) && val.length === 0) {
                     empty = true;
                 }
+
+                /*
                 if (Alpaca.isNumber(val) && isNaN(val)) {
                     empty = true;
                 }
+                */
             }
             return empty;
         },
@@ -3148,8 +3163,7 @@
         {
             if (!chain || chain.length === 0)
             {
-                done();
-                return;
+                return done();
             }
 
             var current = chain[0];
