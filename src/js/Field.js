@@ -178,6 +178,10 @@
                         {
                             val = parseFloat(val);
                         }
+                        else if (self.schema.type === "integer")
+                        {
+                            val = parseInt(val);
+                        }
                         else if (self.schema.type === "boolean")
                         {
                             if (val === "" || val.toLowerCase() === "false") {
