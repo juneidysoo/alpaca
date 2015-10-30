@@ -24,7 +24,7 @@
 
 }(this, function ($, Handlebars, Bootstrap) {
 
-    //jQuery = $;
+    var jQuery = $;
 
     
         this["HandlebarsPrecompiled"] = this["HandlebarsPrecompiled"] || {};
@@ -1889,6 +1889,42 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["container-grid"] = Handlebars.t
     + ((stack1 = helpers.each.call(depth0,(depth0 != null ? depth0.arrayToolbarActions : depth0),{"name":"each","hash":{},"fn":this.program(3, data, 0, blockParams, depths),"inverse":this.noop,"data":data})) != null ? stack1 : "")
     + "\n        </div>\n\n        <div class=\"alpaca-container-grid-holder\"></div>\n\n    </div>\n\n</script>";
 },"useData":true,"useDepths":true});
+this["HandlebarsPrecompiled"]["bootstrap-edit"]["container-table"] = Handlebars.template({"1":function(depth0,helpers,partials,data) {
+    return "";
+},"3":function(depth0,helpers,partials,data) {
+    var stack1, helper, alias1=helpers.helperMissing, alias2="function";
+
+  return "                    <th data-header-id=\""
+    + this.escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"id","hash":{},"data":data}) : helper)))
+    + "\" "
+    + ((stack1 = helpers['if'].call(depth0,(depth0 != null ? depth0.hidden : depth0),{"name":"if","hash":{},"fn":this.program(4, data, 0),"inverse":this.noop,"data":data})) != null ? stack1 : "")
+    + ">"
+    + ((stack1 = ((helper = (helper = helpers.title || (depth0 != null ? depth0.title : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"title","hash":{},"data":data}) : helper))) != null ? stack1 : "")
+    + "</th>\n";
+},"4":function(depth0,helpers,partials,data) {
+    return "class=\"alpaca-table-column-hidden\"";
+},"6":function(depth0,helpers,partials,data) {
+    return "                        <th>Actions</th>\n";
+},"8":function(depth0,helpers,partials,data) {
+    var stack1;
+
+  return "\n                "
+    + ((stack1 = (helpers.item || (depth0 && depth0.item) || helpers.helperMissing).call(depth0,"tr",{"name":"item","hash":{},"fn":this.program(1, data, 0),"inverse":this.noop,"data":data})) != null ? stack1 : "")
+    + "\n\n";
+},"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
+    var stack1, helper, options, buffer = 
+  "<script type=\"text/x-handlebars-template\">\n\n    <div class=\"table-responsive\">\n\n        ";
+  stack1 = ((helper = (helper = helpers.arrayToolbar || (depth0 != null ? depth0.arrayToolbar : depth0)) != null ? helper : helpers.helperMissing),(options={"name":"arrayToolbar","hash":{},"fn":this.program(1, data, 0),"inverse":this.noop,"data":data}),(typeof helper === "function" ? helper.call(depth0,options) : helper));
+  if (!helpers.arrayToolbar) { stack1 = helpers.blockHelperMissing.call(depth0,stack1,options)}
+  if (stack1 != null) { buffer += stack1; }
+  return buffer + "\n\n        <table>\n\n            <!-- table headers -->\n            <thead>\n                <tr>\n"
+    + ((stack1 = helpers.each.call(depth0,(depth0 != null ? depth0.headers : depth0),{"name":"each","hash":{},"fn":this.program(3, data, 0),"inverse":this.noop,"data":data})) != null ? stack1 : "")
+    + "\n"
+    + ((stack1 = helpers['if'].call(depth0,((stack1 = (depth0 != null ? depth0.options : depth0)) != null ? stack1.showActionsColumn : stack1),{"name":"if","hash":{},"fn":this.program(6, data, 0),"inverse":this.noop,"data":data})) != null ? stack1 : "")
+    + "                </tr>\n            </thead>\n\n            <!-- table body -->\n            <tbody>\n"
+    + ((stack1 = helpers.each.call(depth0,(depth0 != null ? depth0.items : depth0),{"name":"each","hash":{},"fn":this.program(8, data, 0),"inverse":this.noop,"data":data})) != null ? stack1 : "")
+    + "            </tbody>\n\n        </table>\n\n    </div>\n\n</script>";
+},"useData":true});
 this["HandlebarsPrecompiled"]["bootstrap-edit"]["container"] = Handlebars.template({"1":function(depth0,helpers,partials,data) {
     var stack1;
 
@@ -2783,21 +2819,25 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             errorCallback = Alpaca.defaultErrorCallback;
         }
 
-        var connectorId = "default";
-        var connectorConfig = {};
-        if (Alpaca.isString(connector)) {
-            connectorId = connector;
-        }
-        else if (Alpaca.isObject(connector) && connector.id) {
-            connectorId = connector.id;
-            if (connector.config) {
-                connectorConfig = connector.config;
+        // instantiate the connector (if not already instantiated)
+        // if config is passed in (as object), we instantiate
+        if (!connector || !connector.connect)
+        {
+            var connectorId = "default";
+            var connectorConfig = {};
+            if (Alpaca.isString(connector)) {
+                connectorId = connector;
             }
-        }
+            else if (Alpaca.isObject(connector) && connector.id) {
+                connectorId = connector.id;
+                if (connector.config) {
+                    connectorConfig = connector.config;
+                }
+            }
 
-        // instantiate the connector
-        var ConnectorClass = Alpaca.getConnectorClass(connectorId);
-        connector = new ConnectorClass(connectorId, connectorConfig);
+            var ConnectorClass = Alpaca.getConnectorClass(connectorId);
+            connector = new ConnectorClass(connectorId, connectorConfig);
+        }
 
         // For second or deeper level of fields, default loader should be the one to do loadAll
         // since schema, data, options and view should have already been loaded.
@@ -3261,6 +3301,18 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             return copy;
         },
+
+        copyInto: function(target, source)
+        {
+            for (var i in source)
+            {
+                if (source.hasOwnProperty(i) && !this.isFunction(this[i]))
+                {
+                    target[i] = source[i];
+                }
+            }
+        },
+
 
         /**
          * Retained for legacy purposes.  Alias for copyOf().
@@ -4176,9 +4228,12 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 if (Alpaca.isArray(val) && val.length === 0) {
                     empty = true;
                 }
+
+                /*
                 if (Alpaca.isNumber(val) && isNaN(val)) {
                     empty = true;
                 }
+                */
             }
             return empty;
         },
@@ -5723,8 +5778,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         {
             if (!chain || chain.length === 0)
             {
-                done();
-                return;
+                return done();
             }
 
             var current = chain[0];
@@ -5836,7 +5890,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             else
             {
                 // we don't markup invalidation state for readonly fields
-                if (!field.options.readonly)
+                if (!field.options.readonly || Alpaca.showReadOnlyInvalidState)
                 {
                     var hidden = false;
                     if (field.hideInitValidationError) {
@@ -5880,7 +5934,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 if (!field.initializing)
                 {
                     // we don't markup invalidation state for readonly fields
-                    if (!field.options.readonly)
+                    if (!field.options.readonly || Alpaca.showReadOnlyInvalidState)
                     {
                         // messages
                         var messages = [];
@@ -7342,6 +7396,18 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
     Alpaca.CSRF_COOKIE_NAMES = ["CSRF-TOKEN", "XSRF-TOKEN"];
     Alpaca.CSRF_HEADER_NAME = "X-CSRF-TOKEN";
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // STATIC DEFAULTS
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // use this to set the default "sticky" toolbar behavior
+    // set to true to have toolbars always stick or undefined to have them appear on hover
+    Alpaca.defaultToolbarSticky = undefined;
+
+    // use this to have invalid messages show up for read-only fields
+    Alpaca.showReadOnlyInvalidState = false;
 
 })(jQuery);
 
@@ -8657,6 +8723,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 setScalar(this, element, "collapsible");
                 setScalar(this, element, "legendStyle");
                 setScalar(this, element, "toolbarStyle");
+                setScalar(this, element, "actionbarStyle");
                 setScalar(this, element, "buttonStyle");
                 setScalar(this, element, "toolbarSticky");
                 setScalar(this, element, "globalTemplate");
@@ -8673,6 +8740,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         }
     });
 })(jQuery);
+
 /*jshint -W004 */ // duplicate variables
 (function($) {
 
@@ -9087,6 +9155,10 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                         if (self.schema.type === "number")
                         {
                             val = parseFloat(val);
+                        }
+                        else if (self.schema.type === "integer")
+                        {
+                            val = parseInt(val);
                         }
                         else if (self.schema.type === "boolean")
                         {
@@ -10722,34 +10794,27 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             var result = null;
 
-            if (path)
+            if (typeof path === 'string')
             {
-                // strip off the leading "/" if it is there
-                if (path.indexOf("/") === 0) {
-                    path = path.substring(1);
-                }
-
-                // strip off the trailing "/" if it is there
-                if (Alpaca.endsWith(path, "/")) {
-                    path = path.substring(0, path.length - 1);
-                }
-
                 var current = this;
 
-                var pathArray = path.split('/');
+                var pathArray = path.split(/([[\]/])/);
                 for (var i = 0; i < pathArray.length; i++)
                 {
                     var pathElement = pathArray[i];
-
-                    if (pathElement.indexOf("[") === 0)
-                    {
-                        // index into an array
-                        var index = parseInt(pathElement.substring(1, pathElement.length - 1), 10);
-                        current = current.children[index];
-                    }
-                    else
-                    {
-                        current = current.childrenByPropertyId[pathElement];
+                    if('/[]'.indexOf(pathElement) < 0){
+                        //process non separators
+                        var lastElement = pathArray[i -1];
+                        if (lastElement === '[')
+                        {
+                            // index into an array
+                            current = current.children[pathElement];
+                        }
+                        else if (!lastElement || lastElement === '/')
+                        {
+                            //access property
+                            current = current.childrenByPropertyId[pathElement];
+                        }
                     }
                 }
 
@@ -12810,16 +12875,14 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             var invalidIndex = -1;
 
             // use the dom to create an array that orders things as they are laid out on the page
-            var pageOrderedChildren = new Array(this.children.length);
+            var pageOrderedChildren = [];
             var el = this.getContainerEl();
             if (this.form) {
                 el = this.form.getFormEl();
             }
-            var pageOrder = 0;
             $(el).find(".alpaca-container-item[data-alpaca-container-item-parent-field-id='" + this.getId() + "']").each(function() {
                 var childIndex = $(this).attr("data-alpaca-container-item-index");
-                pageOrderedChildren[pageOrder] = self.children[childIndex];
-                pageOrder++;
+                pageOrderedChildren.push(self.children[childIndex]);
             });
 
             // walk the ordered children and find first invalid
@@ -14062,6 +14125,30 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             {
                 successCallback(resource);
             }
+        },
+
+        /**
+         * Loads data source (value/text) pairs from a remote source.
+         * This default implementation allows for config to be a string identifying a URL.
+         *
+         * @param config
+         * @param successCallback
+         * @param errorCallback
+         * @returns {*}
+         */
+        loadDataSource: function (config, successCallback, errorCallback)
+        {
+            return this._handleLoadDataSource(config, successCallback, errorCallback);
+        },
+
+        _handleLoadDataSource: function(config, successCallback, errorCallback)
+        {
+            var url = config;
+            if (Alpaca.isObject(url)) {
+                url = config.url;
+            }
+
+            return this._handleLoadJsonResource(url, successCallback, errorCallback);
         }
 
     });
@@ -14452,26 +14539,63 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         {
             var self = this;
 
-            Gitana.connect(this.config, function(err) {
-
-                if (err) {
+            var cfn = function(err, branch)
+            {
+                if (err)
+                {
                     onError(err);
                     return;
                 }
 
-                self.gitana = this;
-
-                self.gitana.datastore("content").readBranch("master").then(function() {
-
-                    self.branch = this;
+                if (branch)
+                {
+                    self.branch = Chain(branch);
 
                     self.bindHelperFunctions(self.branch);
+                }
 
-                    // also store a reference on Alpaca for global use
-                    Alpaca.branch = self.branch;
+                onSuccess();
+            };
 
-                    onSuccess();
+            if (Alpaca.globalContext && Alpaca.globalContext.branch)
+            {
+                cfn(null, Alpaca.globalContext.branch);
+            }
+            else
+            {
+                self.branch = null;
+
+                self.doConnect(function (err, branch) {
+                    cfn(err, branch);
                 });
+            }
+        },
+
+        doConnect: function(callback)
+        {
+            var self = this;
+
+            if (!this.config.key) {
+                this.config.key = "default";
+            }
+
+            Gitana.connect(this.config, function(err) {
+
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                if (this.getDriver().getOriginalConfiguration().loadAppHelper)
+                {
+                    this.datastore("content").readBranch("master").then(function() {
+                        callback(null, this);
+                    });
+                }
+                else
+                {
+                    callback();
+                }
             });
         },
 
@@ -14531,6 +14655,28 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                     });
                 };
             }
+
+            if (!branch.loadAlpacaDataSource)
+            {
+                branch.loadAlpacaDataSource = function(config, pagination, callback)
+                {
+                    var params = {};
+                    if (pagination)
+                    {
+                        Alpaca.copyInto(params, pagination);
+                    }
+
+                    var uriFunction = function()
+                    {
+                        return branch.getUri() + "/alpaca/datasource";
+                    };
+
+                    return this.chainPostResponse(this, uriFunction, params, config).then(function(response) {
+                        callback.call(this, null, response.datasource);
+                    });
+                };
+            }
+
         },
 
         /**
@@ -14545,6 +14691,13 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         {
             var self = this;
 
+            // if we didn't connect to a branch, then use the default method
+            if (!self.branch)
+            {
+                return this.base(nodeId, resources, successCallback, errorCallback);
+            }
+
+            // load from cloud cms
             self.branch.loadAlpacaData(nodeId, resources, function(err, data) {
 
                 if (err)
@@ -14576,6 +14729,13 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         {
             var self = this;
 
+            // if we didn't connect to a branch, then use the default method
+            if (!self.branch)
+            {
+                return this.base(schemaIdentifier, resources, successCallback, errorCallback);
+            }
+
+            // load from cloud cms
             self.branch.loadAlpacaSchema(schemaIdentifier, resources, function(err, schema) {
 
                 if (err)
@@ -14602,6 +14762,13 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         {
             var self = this;
 
+            // if we didn't connect to a branch, then use the default method
+            if (!self.branch)
+            {
+                return this.base(optionsIdentifier, resources, successCallback, errorCallback);
+            }
+
+            // load from cloud cms
             self.branch.loadAlpacaOptions(optionsIdentifier, resources, function(err, options) {
 
                 if (err)
@@ -14686,6 +14853,37 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             var self = this;
 
             return self.loadOptions(optionsIdentifier, successCallback, errorCallback);
+        },
+
+        /**
+         * Loads data source elements based on a content query to Cloud CMS.
+         *
+         * @param config
+         * @param successCallback
+         * @param errorCallback
+         * @returns {*}
+         */
+        loadDataSource: function (config, successCallback, errorCallback)
+        {
+            var self = this;
+
+            // if we didn't connect to a branch, then use the default method
+            if (!self.branch)
+            {
+                return this.base(config, successCallback, errorCallback);
+            }
+
+            var pagination = config.pagination;
+            delete config.pagination;
+
+            return self.branch.loadAlpacaDataSource(config, pagination, function(err, array) {
+                if (err) {
+                    errorCallback(err);
+                    return;
+                }
+
+                successCallback(array);
+            });
         }
 
     });
@@ -16304,6 +16502,12 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                     }
                 }
             }
+
+            // if they provided "datasource", we copy to "dataSource"
+            if (self.options.datasource && !self.options.dataSource) {
+                self.options.dataSource = self.options.datasource;
+                delete self.options.datasource;
+            }
         },
 
         prepareControlModel: function(callback)
@@ -16531,15 +16735,62 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                     }
                     else if (Alpaca.isObject(self.options.dataSource))
                     {
-                        for (var k in self.options.dataSource)
+                        if (self.options.dataSource.connector)
                         {
-                            self.selectOptions.push({
-                                "text": self.options.dataSource[k],
-                                "value": k
+                            var connector = self.connector;
+
+                            if (Alpaca.isObject(self.options.dataSource.connector))
+                            {
+                                var connectorId = self.options.dataSource.connector.id;
+                                var connectorConfig = self.options.dataSource.connector.config;
+                                if (!connectorConfig) {
+                                    connectorConfig = {};
+                                }
+
+                                var ConnectorClass = Alpaca.getConnectorClass(connectorId);
+                                connector = new ConnectorClass(connectorId, connectorConfig);
+                            }
+
+                            var config = self.options.dataSource.config;
+                            if (!config) {
+                                config = {};
+                            }
+
+                            // load using connector
+                            connector.loadDataSource(config, function(array) {
+
+                                for (var i = 0; i < array.length; i++)
+                                {
+                                    if (typeof(array[i]) === "string")
+                                    {
+                                        self.selectOptions.push({
+                                            "text": array[i],
+                                            "value": array[i]
+                                        });
+                                    }
+                                    else if (Alpaca.isObject(array[i]))
+                                    {
+                                        self.selectOptions.push(array[i]);
+                                    }
+                                }
+
+                                completionFunction();
                             });
                         }
+                        else
+                        {
+                            // load from standard object
+                            for (var k in self.options.dataSource)
+                            {
+                                self.selectOptions.push({
+                                    "text": self.options.dataSource[k],
+                                    "value": k
+                                });
+                            }
 
-                        completionFunction();
+                            completionFunction();
+                        }
+
                     }
                     else
                     {
@@ -17894,7 +18145,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 }
             }
 
-            var toolbarSticky = undefined;
+            var toolbarSticky = Alpaca.defaultToolbarSticky;
 
             if (!Alpaca.isEmpty(this.view.toolbarSticky))
             {
@@ -18613,16 +18864,20 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             if (this.schema.items && this.schema.uniqueItems)
             {
                 var hash = {};
-                for (var i = 0, l = this.children.length; i < l; ++i)
+
+                for (var i = 0; i < this.children.length; i++)
                 {
-                    if (!hash.hasOwnProperty(this.children[i]))
-                    {
-                        hash[this.children[i]] = true;
+                    var key = this.children[i].getValue();
+                    if (!key) {
+                        key = "";
                     }
-                    else
+
+                    if (hash[key])
                     {
                         return false;
                     }
+
+                    hash[key] = true;
                 }
             }
 
@@ -20182,7 +20437,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             status = this._validateMinProperties();
             valInfo["tooFewProperties"] = {
-                "message": status ? "" : Alpaca.substituteTokens(this.getMessage("tooManyItems"), [this.schema.items.minProperties]),
+                "message": status ? "" : Alpaca.substituteTokens(this.getMessage("tooManyItems"), [this.schema.minProperties]),
                 "status": status
             };
 
@@ -21068,11 +21323,11 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                         var fields = [];
 
                         var currentStepEl = $($(wizardSteps).find("[data-alpaca-wizard-role='step']")[currentIndex]);
-                        $(currentStepEl).find(".alpaca-field").each(function() {
-                            var fieldId = $(this).attr("data-alpaca-field-id");
+                        $(currentStepEl).find(".alpaca-field:not([data-alpaca-wizard-role='step'] .alpaca-field .alpaca-field)").each(function() {
+                            var fieldId = $(this).attr("data-alpaca-field-path");
                             if (fieldId)
                             {
-                                var field = self.childrenById[fieldId];
+                                var field = self.getControlByPath(fieldId);
                                 if (field)
                                 {
                                     fields.push(field);
@@ -24745,7 +25000,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             this.base();
 
-            if (this.data) {
+            if (typeof this.data === 'string') {
                 this.data = this.data.toLowerCase();
             }
         },
@@ -28895,43 +29150,92 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 	Alpaca.registerView ({
 		"id": "base",
 		"messages": {
-			"zh_CN": {
-				required: "&#27492;&#22495;&#24517;&#39035;",
-				invalid: "&#27492;&#22495;&#19981;&#21512;&#26684;",
-				months: ["&#19968;&#26376;", "&#20108;&#26376;", "&#19977;&#26376;", "&#22235;&#26376;", "&#20116;&#26376;", "&#20845;&#26376;", "&#19971;&#26376;", "&#20843;&#26376;", "&#20061;&#26376;", "&#21313;&#26376;", "&#21313;&#19968;&#26376;", "&#21313;&#20108;&#26376;"],
-				timeUnits: {
-					SECOND: "&#31186;",
-					MINUTE: "&#20998;",
-					HOUR: "&#26102;",
-					DAY: "&#26085;",
-					MONTH: "&#26376;",
-					YEAR: "&#24180;"
-				},
-				"notOptional": "&#27492;&#22495;&#38750;&#20219;&#36873;",
-				"disallowValue": "&#38750;&#27861;&#36755;&#20837;&#21253;&#25324; {0}.",
-				"invalidValueOfEnum": "&#20801;&#35768;&#36755;&#20837;&#21253;&#25324; {0}. [{1}]",
-				"notEnoughItems": "&#26368;&#23567;&#20010;&#25968; {0}",
-				"tooManyItems": "&#26368;&#22823;&#20010;&#25968; {0}",
-				"valueNotUnique": "&#36755;&#20837;&#20540;&#19981;&#29420;&#29305;",
-				"notAnArray": "&#19981;&#26159;&#25968;&#32452;",
-				"invalidDate": "&#26085;&#26399;&#26684;&#24335;&#22240;&#35813;&#26159; {0}",
-				"invalidEmail": "&#20234;&#22969;&#20799;&#26684;&#24335;&#19981;&#23545;, ex: info@cloudcms.com",
-				"stringNotAnInteger": "&#19981;&#26159;&#25972;&#25968;.",
-				"invalidIPv4": "&#19981;&#26159;&#21512;&#27861;IP&#22320;&#22336;, ex: 192.168.0.1",
-				"stringValueTooSmall": "&#26368;&#23567;&#20540;&#26159; {0}",
-				"stringValueTooLarge": "&#26368;&#22823;&#20540;&#26159; {0}",
-				"stringValueTooSmallExclusive": "&#20540;&#24517;&#39035;&#22823;&#20110; {0}",
-				"stringValueTooLargeExclusive": "&#20540;&#24517;&#39035;&#23567;&#20110; {0}",
-				"stringDivisibleBy": "&#20540;&#24517;&#39035;&#33021;&#34987; {0} &#25972;&#38500;",
-				"stringNotANumber": "&#19981;&#26159;&#25968;&#23383;.",
-				"invalidPassword": "&#38750;&#27861;&#23494;&#30721;",
-				"invalidPhone": "&#38750;&#27861;&#30005;&#35805;&#21495;&#30721;, ex: (123) 456-9999",
-				"invalidPattern": "&#27492;&#22495;&#39035;&#26377;&#26684;&#24335; {0}",
-				"stringTooShort": "&#27492;&#22495;&#33267;&#23569;&#38271;&#24230; {0}",
-				"stringTooLong": "&#27492;&#22495;&#26368;&#22810;&#38271;&#24230; {0}"
-			}
-        }
-    });
+            "de_AT": {
+                required: "Eingabe erforderlich",
+                invalid: "Eingabe invalid",
+                months: ["Jänner", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+                timeUnits: {
+                    SECOND: "Sekunden",
+                    MINUTE: "Minuten",
+                    HOUR: "Stunden",
+                    DAY: "Tage",
+                    MONTH: "Monate",
+                    YEAR: "Jahre"
+                },
+                "notOptional": "Dieses Feld ist nicht optional",
+                "disallowValue": "Diese Werte sind nicht erlaubt: {0}",
+                "invalidValueOfEnum": "Diese Feld sollte einen der folgenden Werte enthalten: {0}. [{1}]",
+                "notEnoughItems": "Die Mindestanzahl von Elementen ist {0}",
+                "tooManyItems": "Die Maximalanzahl von Elementen ist {0}",
+                "valueNotUnique": "Diese Werte sind nicht eindeutig",
+                "notAnArray": "Keine Liste von Werten",
+                "invalidDate": "Falsches Datumsformat: {0}",
+                "invalidEmail": "Ungültige e-Mail Adresse, z.B.: info@cloudcms.com",
+                "stringNotAnInteger": "Eingabe ist keine Ganz Zahl.",
+                "invalidIPv4": "Ungültige IPv4 Adresse, z.B.: 192.168.0.1",
+                "stringValueTooSmall": "Die Mindestanzahl von Zeichen ist {0}",
+                "stringValueTooLarge": "Die Maximalanzahl von Zeichen ist {0}",
+                "stringValueTooSmallExclusive": "Die Anzahl der Zeichen muss größer sein als {0}",
+                "stringValueTooLargeExclusive": "Die Anzahl der Zeichen muss kleiner sein als {0}",
+                "stringDivisibleBy": "Der Wert muss durch {0} dividierbar sein",
+                "stringNotANumber": "Die Eingabe ist keine Zahl",
+                "invalidPassword": "Ungültiges Passwort.",
+                "invalidPhone": "Ungültige Telefonnummer, z.B.: (123) 456-9999",
+                "invalidPattern": "Diese Feld stimmt nicht mit folgender Vorgabe überein {0}",
+                "stringTooShort": "Dieses Feld sollte mindestens {0} Zeichen enthalten",
+                "stringTooLong": "Dieses Feld sollte höchstens {0} Zeichen enthalten"
+            }
+		}
+	});
+
+})(jQuery);
+
+(function($) {
+
+	// german - germany
+
+	var Alpaca = $.alpaca;
+
+	Alpaca.registerView ({
+		"id": "base",
+		"messages": {
+            "de_DE": {
+                required: "Eingabe erforderlich",
+                invalid: "Eingabe ungültig",
+                months: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+                timeUnits: {
+                    SECOND: "Sekunden",
+                    MINUTE: "Minuten",
+                    HOUR: "Stunden",
+                    DAY: "Tage",
+                    MONTH: "Monate",
+                    YEAR: "Jahre"
+                },
+                "notOptional": "Dieses Feld ist nicht optional",
+                "disallowValue": "Diese Werte sind nicht erlaubt: {0}",
+                "invalidValueOfEnum": "Diese Feld sollte einen der folgenden Werte enthalten: {0}. [{1}]",
+                "notEnoughItems": "Die Mindestanzahl von Elementen ist {0}",
+                "tooManyItems": "Die Maximalanzahl von Elementen ist {0}",
+                "valueNotUnique": "Diese Werte sind nicht eindeutig",
+                "notAnArray": "Keine Liste von Werten",
+                "invalidDate": "Falsches Datumsformat: {0}",
+                "invalidEmail": "Keine gültige E-Mail Adresse",
+                "stringNotAnInteger": "Keine Ganze Zahl",
+                "invalidIPv4": "Ungültige IPv4 Adresse",
+                "stringValueTooSmall": "Die Mindestanzahl von Zeichen ist {0}",
+                "stringValueTooLarge": "Die Maximalanzahl von Zeichen ist {0}",
+                "stringValueTooSmallExclusive": "Die Anzahl der Zeichen muss größer sein als {0}",
+                "stringValueTooLargeExclusive": "Die Anzahl der Zeichen muss kleiner sein als {0}",
+                "stringDivisibleBy": "Der Wert muss durch {0} dividierbar sein",
+                "stringNotANumber": "Die Eingabe ist keine Zahl",
+                "invalidPassword": "Ungültiges Passwort",
+                "invalidPhone": "Ungültige Telefonnummer",
+                "invalidPattern": "Diese Feld stimmt nicht mit folgender Vorgabe überein {0}",
+                "stringTooShort": "Dieses Feld sollte mindestens {0} Zeichen enthalten",
+                "stringTooLong": "Dieses Feld sollte höchstens {0} Zeichen enthalten"
+            }
+		}
+	});
 
 })(jQuery);
 
@@ -29310,43 +29614,43 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 	Alpaca.registerView ({
 		"id": "base",
 		"messages": {
-            "de_AT": {
-                required: "Eingabe erforderlich",
-                invalid: "Eingabe invalid",
-                months: ["Jänner", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
-                timeUnits: {
-                    SECOND: "Sekunden",
-                    MINUTE: "Minuten",
-                    HOUR: "Stunden",
-                    DAY: "Tage",
-                    MONTH: "Monate",
-                    YEAR: "Jahre"
-                },
-                "notOptional": "Dieses Feld ist nicht optional",
-                "disallowValue": "Diese Werte sind nicht erlaubt: {0}",
-                "invalidValueOfEnum": "Diese Feld sollte einen der folgenden Werte enthalten: {0}. [{1}]",
-                "notEnoughItems": "Die Mindestanzahl von Elementen ist {0}",
-                "tooManyItems": "Die Maximalanzahl von Elementen ist {0}",
-                "valueNotUnique": "Diese Werte sind nicht eindeutig",
-                "notAnArray": "Keine Liste von Werten",
-                "invalidDate": "Falsches Datumsformat: {0}",
-                "invalidEmail": "Ungültige e-Mail Adresse, z.B.: info@cloudcms.com",
-                "stringNotAnInteger": "Eingabe ist keine Ganz Zahl.",
-                "invalidIPv4": "Ungültige IPv4 Adresse, z.B.: 192.168.0.1",
-                "stringValueTooSmall": "Die Mindestanzahl von Zeichen ist {0}",
-                "stringValueTooLarge": "Die Maximalanzahl von Zeichen ist {0}",
-                "stringValueTooSmallExclusive": "Die Anzahl der Zeichen muss größer sein als {0}",
-                "stringValueTooLargeExclusive": "Die Anzahl der Zeichen muss kleiner sein als {0}",
-                "stringDivisibleBy": "Der Wert muss durch {0} dividierbar sein",
-                "stringNotANumber": "Die Eingabe ist keine Zahl",
-                "invalidPassword": "Ungültiges Passwort.",
-                "invalidPhone": "Ungültige Telefonnummer, z.B.: (123) 456-9999",
-                "invalidPattern": "Diese Feld stimmt nicht mit folgender Vorgabe überein {0}",
-                "stringTooShort": "Dieses Feld sollte mindestens {0} Zeichen enthalten",
-                "stringTooLong": "Dieses Feld sollte höchstens {0} Zeichen enthalten"
-            }
-		}
-	});
+			"zh_CN": {
+				required: "&#27492;&#22495;&#24517;&#39035;",
+				invalid: "&#27492;&#22495;&#19981;&#21512;&#26684;",
+				months: ["&#19968;&#26376;", "&#20108;&#26376;", "&#19977;&#26376;", "&#22235;&#26376;", "&#20116;&#26376;", "&#20845;&#26376;", "&#19971;&#26376;", "&#20843;&#26376;", "&#20061;&#26376;", "&#21313;&#26376;", "&#21313;&#19968;&#26376;", "&#21313;&#20108;&#26376;"],
+				timeUnits: {
+					SECOND: "&#31186;",
+					MINUTE: "&#20998;",
+					HOUR: "&#26102;",
+					DAY: "&#26085;",
+					MONTH: "&#26376;",
+					YEAR: "&#24180;"
+				},
+				"notOptional": "&#27492;&#22495;&#38750;&#20219;&#36873;",
+				"disallowValue": "&#38750;&#27861;&#36755;&#20837;&#21253;&#25324; {0}.",
+				"invalidValueOfEnum": "&#20801;&#35768;&#36755;&#20837;&#21253;&#25324; {0}. [{1}]",
+				"notEnoughItems": "&#26368;&#23567;&#20010;&#25968; {0}",
+				"tooManyItems": "&#26368;&#22823;&#20010;&#25968; {0}",
+				"valueNotUnique": "&#36755;&#20837;&#20540;&#19981;&#29420;&#29305;",
+				"notAnArray": "&#19981;&#26159;&#25968;&#32452;",
+				"invalidDate": "&#26085;&#26399;&#26684;&#24335;&#22240;&#35813;&#26159; {0}",
+				"invalidEmail": "&#20234;&#22969;&#20799;&#26684;&#24335;&#19981;&#23545;, ex: info@cloudcms.com",
+				"stringNotAnInteger": "&#19981;&#26159;&#25972;&#25968;.",
+				"invalidIPv4": "&#19981;&#26159;&#21512;&#27861;IP&#22320;&#22336;, ex: 192.168.0.1",
+				"stringValueTooSmall": "&#26368;&#23567;&#20540;&#26159; {0}",
+				"stringValueTooLarge": "&#26368;&#22823;&#20540;&#26159; {0}",
+				"stringValueTooSmallExclusive": "&#20540;&#24517;&#39035;&#22823;&#20110; {0}",
+				"stringValueTooLargeExclusive": "&#20540;&#24517;&#39035;&#23567;&#20110; {0}",
+				"stringDivisibleBy": "&#20540;&#24517;&#39035;&#33021;&#34987; {0} &#25972;&#38500;",
+				"stringNotANumber": "&#19981;&#26159;&#25968;&#23383;.",
+				"invalidPassword": "&#38750;&#27861;&#23494;&#30721;",
+				"invalidPhone": "&#38750;&#27861;&#30005;&#35805;&#21495;&#30721;, ex: (123) 456-9999",
+				"invalidPattern": "&#27492;&#22495;&#39035;&#26377;&#26684;&#24335; {0}",
+				"stringTooShort": "&#27492;&#22495;&#33267;&#23569;&#38271;&#24230; {0}",
+				"stringTooLong": "&#27492;&#22495;&#26368;&#22810;&#38271;&#24230; {0}"
+			}
+        }
+    });
 
 })(jQuery);
 
