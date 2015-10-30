@@ -208,21 +208,25 @@
             errorCallback = Alpaca.defaultErrorCallback;
         }
 
-        var connectorId = "default";
-        var connectorConfig = {};
-        if (Alpaca.isString(connector)) {
-            connectorId = connector;
-        }
-        else if (Alpaca.isObject(connector) && connector.id) {
-            connectorId = connector.id;
-            if (connector.config) {
-                connectorConfig = connector.config;
+        // instantiate the connector (if not already instantiated)
+        // if config is passed in (as object), we instantiate
+        if (!connector || !connector.connect)
+        {
+            var connectorId = "default";
+            var connectorConfig = {};
+            if (Alpaca.isString(connector)) {
+                connectorId = connector;
             }
-        }
+            else if (Alpaca.isObject(connector) && connector.id) {
+                connectorId = connector.id;
+                if (connector.config) {
+                    connectorConfig = connector.config;
+                }
+            }
 
-        // instantiate the connector
-        var ConnectorClass = Alpaca.getConnectorClass(connectorId);
-        connector = new ConnectorClass(connectorId, connectorConfig);
+            var ConnectorClass = Alpaca.getConnectorClass(connectorId);
+            connector = new ConnectorClass(connectorId, connectorConfig);
+        }
 
         // For second or deeper level of fields, default loader should be the one to do loadAll
         // since schema, data, options and view should have already been loaded.
@@ -3275,7 +3279,7 @@
             else
             {
                 // we don't markup invalidation state for readonly fields
-                if (!field.options.readonly)
+                if (!field.options.readonly || Alpaca.showReadOnlyInvalidState)
                 {
                     var hidden = false;
                     if (field.hideInitValidationError) {
@@ -3319,7 +3323,7 @@
                 if (!field.initializing)
                 {
                     // we don't markup invalidation state for readonly fields
-                    if (!field.options.readonly)
+                    if (!field.options.readonly || Alpaca.showReadOnlyInvalidState)
                     {
                         // messages
                         var messages = [];
@@ -4781,5 +4785,17 @@
     Alpaca.CSRF_COOKIE_NAMES = ["CSRF-TOKEN", "XSRF-TOKEN"];
     Alpaca.CSRF_HEADER_NAME = "X-CSRF-TOKEN";
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // STATIC DEFAULTS
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // use this to set the default "sticky" toolbar behavior
+    // set to true to have toolbars always stick or undefined to have them appear on hover
+    Alpaca.defaultToolbarSticky = undefined;
+
+    // use this to have invalid messages show up for read-only fields
+    Alpaca.showReadOnlyInvalidState = false;
 
 })(jQuery);
