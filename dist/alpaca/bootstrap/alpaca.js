@@ -4484,6 +4484,12 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                         }
                         */
 
+                        if (!field.parent)
+                        {
+                            // trigger event: ready
+                            field.triggerWithPropagation.call(field, "ready", "down");
+                        }
+
                         // TEST - swap code
                         // swap placeholder -> el
                         //$(tempHolder).before(el);
@@ -9312,18 +9318,74 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
         },
 
         /**
-         * Triggers an event and propagates the event up the parent chain.
+         * Triggers an event and propagates the event.
+         *
+         * By default, the behavior is to propagate up to the parent chain (bubble up).
+         *
+         * If "direction" is set to "down" and the field is a container, then the event is propagated down
+         * to children (trickle down).
+         *
+         * If "direction" is set to "both", then both up and down are triggered.
          *
          * @param name
          * @param event
+         * @param direction (optional) see above
          */
-        triggerWithPropagation: function(name, event)
+        triggerWithPropagation: function(name, event, direction)
         {
-            this.trigger.call(this, name, event);
+            if (typeof(event) === "string") {
+                direction = event;
+                event = null;
+            }
 
-            if (this.parent)
+            if (!direction || direction === "up")
             {
-                this.parent.triggerWithPropagation.call(this.parent, name, event);
+                // we trigger ourselves first
+                this.trigger.call(this, name, event);
+
+                // then we trigger parents
+                if (this.parent)
+                {
+                    this.parent.triggerWithPropagation.call(this.parent, name, event, direction);
+                }
+            }
+            else if (direction === "down")
+            {
+                // do any children first
+                if (this.children && this.children.length > 0)
+                {
+                    for (var i = 0; i < this.children.length; i++)
+                    {
+                        var child = this.children[i];
+
+                        child.triggerWithPropagation.call(child, name, event, direction);
+                    }
+                }
+
+                // do ourselves last
+                this.trigger.call(this, name, event);
+            }
+            else if (direction === "both")
+            {
+                // do any children first
+                if (this.children && this.children.length > 0)
+                {
+                    for (var i = 0; i < this.children.length; i++)
+                    {
+                        var child = this.children[i];
+
+                        child.triggerWithPropagation.call(child, name, event, "down");
+                    }
+                }
+
+                // then do ourselves
+                this.trigger.call(this, name, event);
+
+                // then we trigger parents
+                if (this.parent)
+                {
+                    this.parent.triggerWithPropagation.call(this.parent, name, event, "up");
+                }
             }
         },
 
@@ -9387,6 +9449,8 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
          */
         render: function(view, callback)
         {
+            var self = this;
+
             if (view && (Alpaca.isString(view) || Alpaca.isObject(view)))
             {
                 this.view.setView(view);
@@ -9416,7 +9480,10 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             this.setup();
 
-            this._render(callback);
+            this._render(function() {
+
+                callback();
+            });
         },
 
         calculateName: function()
@@ -9920,6 +9987,9 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 {
                     $(self._oldFieldEl).remove();
                 }
+
+                // trigger event: ready
+                self.triggerWithPropagation("ready", "down");
 
                 if (callback)
                 {
@@ -19368,6 +19438,9 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                     // trigger update
                     self.triggerUpdate();
 
+                    // trigger "ready"
+                    item.triggerWithPropagation.call(item, "ready", "down");
+
                     if (callback)
                     {
                         callback(item);
@@ -20899,6 +20972,9 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
                     // trigger update
                     self.triggerUpdate();
+
+                    // trigger "ready"
+                    child.triggerWithPropagation.call(child, "ready", "down");
 
                     if (callback)
                     {
@@ -22478,12 +22554,15 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 // see if we can render CK Editor
                 if (!self.isDisplayOnly() && self.control && typeof(CKEDITOR) !== "undefined")
                 {
-                    // use a timeout because CKEditor has some odd timing dependencies
-                    setTimeout(function() {
+                    // wait for Alpaca to declare the DOM swapped and ready before we attempt to do anything with CKEditor
+                    self.on("ready", function() {
+                        if (!self.editor)
+                        {
+                            self.editor = CKEDITOR.replace($(self.control)[0], self.options.ckeditor);
 
-                        self.editor = CKEDITOR.replace($(self.control)[0], self.options.ckeditor);
-
-                    }, 500);
+                            self.initCKEditorEvents();
+                        }
+                    });
                 }
 
                 // if the ckeditor's dom element gets destroyed, make sure we clean up the editor instance
@@ -22504,61 +22583,57 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             });
         },
 
-        initControlEvents: function()
+        initCKEditorEvents: function()
         {
             var self = this;
 
-            setTimeout(function() {
+            if (self.editor)
+            {
+                // click event
+                self.editor.on("click", function (e) {
+                    self.onClick.call(self, e);
+                    self.trigger("click", e);
+                });
 
-                if (self.editor)
-                {
-                    // click event
-                    self.editor.on("click", function (e) {
-                        self.onClick.call(self, e);
-                        self.trigger("click", e);
-                    });
+                // change event
+                self.editor.on("change", function (e) {
+                    self.onChange();
+                    self.triggerWithPropagation("change", e);
+                });
 
-                    // change event
-                    self.editor.on("change", function (e) {
-                        self.onChange();
-                        self.triggerWithPropagation("change", e);
-                    });
+                // blur event
+                self.editor.on('blur', function (e) {
+                    self.onBlur();
+                    self.trigger("blur", e);
+                });
 
-                    // blur event
-                    self.editor.on('blur', function (e) {
-                        self.onBlur();
-                        self.trigger("blur", e);
-                    });
+                // focus event
+                self.editor.on("focus", function (e) {
+                    self.onFocus.call(self, e);
+                    self.trigger("focus", e);
+                });
 
-                    // focus event
-                    self.editor.on("focus", function (e) {
-                        self.onFocus.call(self, e);
-                        self.trigger("focus", e);
-                    });
+                // keypress event
+                self.editor.on("key", function (e) {
+                    self.onKeyPress.call(self, e);
+                    self.trigger("keypress", e);
+                });
 
-                    // keypress event
-                    self.editor.on("key", function (e) {
-                        self.onKeyPress.call(self, e);
-                        self.trigger("keypress", e);
-                    });
+                // NOTE: these do not seem to work with CKEditor?
+                /*
+                 // keyup event
+                 self.editor.on("keyup", function(e) {
+                 self.onKeyUp.call(self, e);
+                 self.trigger("keyup", e);
+                 });
 
-                    // NOTE: these do not seem to work with CKEditor?
-                    /*
-                     // keyup event
-                     self.editor.on("keyup", function(e) {
-                     self.onKeyUp.call(self, e);
-                     self.trigger("keyup", e);
-                     });
-
-                     // keydown event
-                     self.editor.on("keydown", function(e) {
-                     self.onKeyDown.call(self, e);
-                     self.trigger("keydown", e);
-                     });
-                     */
-                }
-
-            }, 525); // NOTE: odd timing dependencies
+                 // keydown event
+                 self.editor.on("keydown", function(e) {
+                 self.onKeyDown.call(self, e);
+                 self.trigger("keydown", e);
+                 });
+                 */
+            }
         },
 
         setValue: function(value)
@@ -22749,7 +22824,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                     }, 100);
 
                     $(self.control).on('change.spectrum', function(e, tinycolor) {
-                        self.setValue(tinycolor.toHexString());
+                        self.setValue(tinycolor ? tinycolor.toHexString() : undefined);
                     });
                 }
 
@@ -23251,6 +23326,11 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             {
                 self.options.manualEntry = false;
             }
+
+            if (self.data)
+            {
+                self.options.picker.defaultDate = self.data;
+            }
         },
         
         onKeyPress: function(e)
@@ -23279,6 +23359,13 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 this.base(e);
                 return;
             }
+        },
+
+        beforeRenderControl: function(model, callback)
+        {
+            this.field.css("position", "relative");
+
+            callback();
         },
 
         /**
@@ -27246,83 +27333,86 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 return value;
             },
 
-            initControlEvents: function()
+            initTinyMCEEvents: function()
             {
                 var self = this;
 
-                setTimeout(function() {
+                if (self.editor) {
 
-                    if (self.editor) {
+                    // click event
+                    self.editor.on("click", function (e) {
+                        self.onClick.call(self, e);
+                        self.trigger("click", e);
+                    });
 
-                        // click event
-                        self.editor.on("click", function (e) {
-                            self.onClick.call(self, e);
-                            self.trigger("click", e);
-                        });
+                    // change event
+                    self.editor.on("change", function (e) {
+                        self.onChange();
+                        self.triggerWithPropagation("change", e);
+                    });
 
-                        // change event
-                        self.editor.on("change", function (e) {
-                            self.onChange();
-                            self.triggerWithPropagation("change", e);
-                        });
+                    // blur event
+                    self.editor.on('blur', function (e) {
+                        self.onBlur();
+                        self.trigger("blur", e);
+                    });
 
-                        // blur event
-                        self.editor.on('blur', function (e) {
-                            self.onBlur();
-                            self.trigger("blur", e);
-                        });
+                    // focus event
+                    self.editor.on("focus", function (e) {
+                        self.onFocus.call(self, e);
+                        self.trigger("focus", e);
+                    });
 
-                        // focus event
-                        self.editor.on("focus", function (e) {
-                            self.onFocus.call(self, e);
-                            self.trigger("focus", e);
-                        });
+                    // keypress event
+                    self.editor.on("keypress", function (e) {
+                        self.onKeyPress.call(self, e);
+                        self.trigger("keypress", e);
+                    });
 
-                        // keypress event
-                        self.editor.on("keypress", function (e) {
-                            self.onKeyPress.call(self, e);
-                            self.trigger("keypress", e);
-                        });
+                    // keyup event
+                    self.editor.on("keyup", function (e) {
+                        self.onKeyUp.call(self, e);
+                        self.trigger("keyup", e);
+                    });
 
-                        // keyup event
-                        self.editor.on("keyup", function (e) {
-                            self.onKeyUp.call(self, e);
-                            self.trigger("keyup", e);
-                        });
-
-                        // keydown event
-                        self.editor.on("keydown", function (e) {
-                            self.onKeyDown.call(self, e);
-                            self.trigger("keydown", e);
-                        });
-                    }
-
-                }, 525);
+                    // keydown event
+                    self.editor.on("keydown", function (e) {
+                        self.onKeyDown.call(self, e);
+                        self.trigger("keydown", e);
+                    });
+                }
             },
 
             afterRenderControl: function(model, callback)
             {
                 var self = this;
+
                 this.base(model, function() {
 
                     if (!self.isDisplayOnly() && self.control && typeof(tinyMCE) !== "undefined")
                     {
-                        var rteFieldID = self.control[0].id;
+                        // wait for Alpaca to declare the DOM swapped and ready before we attempt to do anything with CKEditor
+                        self.on("ready", function() {
 
-                        setTimeout(function () {
+                            if (!self.editor)
+                            {
+                                var rteFieldID = $(self.control)[0].id;
 
-                            tinyMCE.init({
-                                init_instance_callback: function(editor) {
-                                    self.editor = editor;
+                                tinyMCE.init({
+                                    init_instance_callback: function(editor) {
+                                        self.editor = editor;
 
-                                    callback();
-                                },
-                                selector: "#" + rteFieldID,
-                                toolbar: self.options.toolbar
-                            });
+                                        self.initTinyMCEEvents();
+                                    },
+                                    selector: "#" + rteFieldID,
+                                    toolbar: self.options.toolbar
+                                });
 
-                        }, 500);
+                            }
+                        });
                     }
+
+                    callback();
                 });
             },
 
