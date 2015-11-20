@@ -84,7 +84,7 @@
                     }, 100);
 
                     $(self.control).on('change.spectrum', function(e, tinycolor) {
-                        self.setValue(tinycolor.toHexString());
+                        self.setValue(tinycolor ? tinycolor.toHexString() : undefined);
                     });
                 }
 
