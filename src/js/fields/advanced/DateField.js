@@ -78,6 +78,11 @@
             {
                 self.options.manualEntry = false;
             }
+
+            if (self.data)
+            {
+                self.options.picker.defaultDate = self.data;
+            }
         },
         
         onKeyPress: function(e)
@@ -106,6 +111,13 @@
                 this.base(e);
                 return;
             }
+        },
+
+        beforeRenderControl: function(model, callback)
+        {
+            this.field.css("position", "relative");
+
+            callback();
         },
 
         /**
