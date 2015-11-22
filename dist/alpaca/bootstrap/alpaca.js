@@ -1105,7 +1105,7 @@ this["HandlebarsPrecompiled"]["web-edit"]["control-select"] = Handlebars.templat
     + "\" "
     + ((stack1 = helpers.each.call(depth0,(depths[1] != null ? depths[1].data : depths[1]),{"name":"each","hash":{},"fn":this.program(15, data, 0, blockParams, depths),"inverse":this.noop,"data":data})) != null ? stack1 : "")
     + ">"
-    + this.escapeExpression(((helper = (helper = helpers.text || (depth0 != null ? depth0.text : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"text","hash":{},"data":data}) : helper)))
+    + ((stack1 = ((helper = (helper = helpers.text || (depth0 != null ? depth0.text : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"text","hash":{},"data":data}) : helper))) != null ? stack1 : "")
     + "</option>\n";
 },"15":function(depth0,helpers,partials,data,blockParams,depths) {
     var stack1;
@@ -1129,7 +1129,7 @@ this["HandlebarsPrecompiled"]["web-edit"]["control-select"] = Handlebars.templat
     + "\" "
     + ((stack1 = (helpers.compare || (depth0 && depth0.compare) || alias1).call(depth0,(depth0 != null ? depth0.value : depth0),(depths[2] != null ? depths[2].data : depths[2]),{"name":"compare","hash":{},"fn":this.program(16, data, 0, blockParams, depths),"inverse":this.noop,"data":data})) != null ? stack1 : "")
     + ">"
-    + this.escapeExpression(((helper = (helper = helpers.text || (depth0 != null ? depth0.text : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"text","hash":{},"data":data}) : helper)))
+    + ((stack1 = ((helper = (helper = helpers.text || (depth0 != null ? depth0.text : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"text","hash":{},"data":data}) : helper))) != null ? stack1 : "")
     + "</option>\n";
 },"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data,blockParams,depths) {
     var stack1, helper;
@@ -1146,7 +1146,7 @@ this["HandlebarsPrecompiled"]["web-edit"]["control-select"] = Handlebars.templat
     + ((stack1 = helpers['if'].call(depth0,(depth0 != null ? depth0.name : depth0),{"name":"if","hash":{},"fn":this.program(7, data, 0, blockParams, depths),"inverse":this.noop,"data":data})) != null ? stack1 : "")
     + ">\n\n"
     + ((stack1 = helpers['if'].call(depth0,((stack1 = (depth0 != null ? depth0.options : depth0)) != null ? stack1.multiple : stack1),{"name":"if","hash":{},"fn":this.program(9, data, 0, blockParams, depths),"inverse":this.program(18, data, 0, blockParams, depths),"data":data})) != null ? stack1 : "")
-    + "\n    </select>\n\n</script>";
+    + "\n    </select>\n\n</script>\n";
 },"useData":true,"useDepths":true});
 this["HandlebarsPrecompiled"]["web-edit"]["control-text"] = Handlebars.template({"1":function(depth0,helpers,partials,data) {
     var stack1;
@@ -2836,6 +2836,9 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             }
 
             var ConnectorClass = Alpaca.getConnectorClass(connectorId);
+            if (!ConnectorClass) {
+                ConnectorClass = Alpaca.getConnectorClass("default");
+            }
             connector = new ConnectorClass(connectorId, connectorConfig);
         }
 
@@ -7391,6 +7394,27 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
         return value;
     };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Moment.js static
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    Alpaca.moment = function() {
+
+        if (!Alpaca._moment) {
+            if (window.moment) {
+                Alpaca._moment = window.moment;
+            }
+        }
+
+        if (!Alpaca._moment) {
+            throw new Error("The moment.js library has not been included, cannot produce moment object");
+        }
+
+        return Alpaca._moment.call(this, arguments);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -16818,7 +16842,9 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                                 }
 
                                 var ConnectorClass = Alpaca.getConnectorClass(connectorId);
-                                connector = new ConnectorClass(connectorId, connectorConfig);
+                                if (ConnectorClass) {
+                                    connector = new ConnectorClass(connectorId, connectorConfig);
+                                }
                             }
 
                             var config = self.options.dataSource.config;
@@ -23326,11 +23352,6 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
             {
                 self.options.manualEntry = false;
             }
-
-            if (self.data)
-            {
-                self.options.picker.defaultDate = self.data;
-            }
         },
         
         onKeyPress: function(e)
@@ -23403,6 +23424,11 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                             }, 250);
 
                         });
+
+                        // set value if provided
+                        if (self.data) {
+                            self.picker.date(self.data);
+                        }
                     }
                 }
 
@@ -23522,7 +23548,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
                     for (var i = 0; i < dateFormats.length; i++)
                     {
-                        isValid = isValid || moment(value, self.options.dateFormat, true).isValid();
+                        isValid = isValid || Alpaca.moment(value, self.options.dateFormat, true).isValid();
                     }
                 }
             }
@@ -23541,7 +23567,7 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
             if (this.picker)
             {
-                if (moment(value, self.options.dateFormat, true).isValid())
+                if (Alpaca.moment(value, self.options.dateFormat, true).isValid())
                 {
                     this.picker.date(value);
                 }
@@ -27491,6 +27517,149 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
 
     var Alpaca = $.alpaca;
 
+    Alpaca.Fields.TokenField = Alpaca.Fields.TextField.extend(
+    /**
+     * @lends Alpaca.Fields.TokenField.prototype
+     */
+    {
+        /**
+         * @override
+         */
+        getFieldType: function() {
+            return "token";
+        },
+
+        /**
+         * @override
+         */
+        setup: function()
+        {
+            this.base();
+
+            if (!this.options.separator)
+            {
+                this.options.separator = ",";
+            }
+
+            if (typeof(this.options.tokenfield) == "undefined")
+            {
+                this.options.tokenfield = {};
+            }
+
+            if (typeof(this.options.tokenfield.showAutocompleteOnFocus) === "undefined")
+            {
+                this.options.tokenfield.showAutocompleteOnFocus = true;
+            }
+        },
+
+        /**
+         * @override
+         */
+        getControlValue: function()
+        {
+            return this.base();
+        },
+
+        /**
+         * @override
+         */
+        setValue: function(val)
+        {
+            this.base(val);
+        },
+
+        /**
+         * @override
+         */
+        onBlur: function(e)
+        {
+            this.base(e);
+        },
+
+        afterRenderControl: function(model, callback)
+        {
+            var self = this;
+
+            this.base(model, function() {
+
+                // see if we can render CK Editor
+                if (!self.isDisplayOnly() && self.control && typeof($.fn.tokenfield) !== "undefined")
+                {
+                    // wait for Alpaca to declare the DOM swapped and ready before we attempt to do anything
+                    self.on("ready", function() {
+                        $(self.control).tokenfield(self.options.tokenfield);
+                    });
+                }
+
+                callback();
+            });
+        }
+
+
+
+        /* builder_helpers */
+        ,
+
+        /**
+         * @override
+         */
+        getTitle: function() {
+            return "Token Field";
+        },
+
+        /**
+         * @override
+         */
+        getDescription: function() {
+            return "Token field for entering list of tokens separated by delimiter.";
+        },
+
+        /**
+         * @override
+         */
+        getSchemaOfOptions: function() {
+            return Alpaca.merge(this.base(), {
+                "properties": {
+                    "separator": {
+                        "title": "Separator",
+                        "description": "Separator used to split tokens.",
+                        "type": "string",
+                        "default":","
+                    },
+                    "tokenfield": {
+                        "title": "Token Field options",
+                        "description": "Settings to pass into the underlying bootstrap-tokenfield control",
+                        "type": "object",
+                        "default": undefined
+                    }
+                }
+            });
+        },
+
+        /**
+         * @override
+         */
+        getOptionsForOptions: function() {
+            return Alpaca.merge(this.base(), {
+                "fields": {
+                    "separator": {
+                        "type": "text"
+                    }
+                }
+            });
+        }
+
+        /* end_builder_helpers */
+    });
+
+    Alpaca.registerFieldClass("token", Alpaca.Fields.TokenField);
+
+})(jQuery);
+
+(function($) {
+
+    var Alpaca = $.alpaca;
+
     Alpaca.Fields.UploadField = Alpaca.Fields.TextField.extend(
     /**
      * @lends Alpaca.Fields.UploadField.prototype
@@ -29652,6 +29821,55 @@ this["HandlebarsPrecompiled"]["bootstrap-edit"]["message"] = Handlebars.template
                 "editorAnnotationsExist": "エディタが修正すべきエラーを報告しています",
                 "invalidZipcodeFormatFive": "5桁の Zipcode (#####) ではありません",
                 "invalidZipcodeFormatNine": "9桁の Zipcode (#####-####) ではありません"
+            }
+        }
+    });
+
+})(jQuery);
+
+(function($) {
+
+	// dutch - belgium
+
+	var Alpaca = $.alpaca;
+
+	Alpaca.registerView ({
+		"id": "base",
+		"messages": {
+			"nl_BE": {
+				required: "Dit veld is verplicht",
+				invalid: "Dit veld is ongeldig",
+				months: ["Januari", "Februari", "Maart", "April", "Mei", "Juni", "July", "Augustus", "September", "Oktober", "November", "December"],
+				timeUnits: {
+					SECOND: "seconden",
+					MINUTE: "minuten",
+					HOUR: "uren",
+					DAY: "dagen",
+					MONTH: "maanden",
+					YEAR: "jaren"
+				},
+				"notOptional": "Dit veld is niet optioneel.",
+				"disallowValue": "{0} zijn verboden waarden.",
+				"invalidValueOfEnum": "Dit veld moet één van volgende bevatten : {0}. [{1}]",
+				"notEnoughItems": "Het minimum aantal elementen is {0}",
+				"tooManyItems": "Het maximum aantal elementen is {0}",
+				"valueNotUnique": "De waarden zijn uniek",
+				"notAnArray": "Deze waarde is geen lijst",
+				"invalidDate": "De datum komt niet overeen met formaat {0}",
+				"invalidEmail": "Ongeldig e-mailadres, vb.: info@cloudcms.com",
+				"stringNotAnInteger": "Deze waarde is geen geheel getal.",
+				"invalidIPv4": "Ongeldig IPv4 adres, vb.: 192.168.0.1",
+				"stringValueTooSmall": "De minimale waarde voor dit veld is {0}",
+				"stringValueTooLarge": "De maximale waarde voor dit veld is {0}",
+				"stringValueTooSmallExclusive": "De waarde moet groter zijn dan {0}",
+				"stringValueTooLargeExclusive": "De waarde moet kleiner zijn dan {0}",
+				"stringDivisibleBy": "De waarde moet deelbaar zijn door {0}",
+				"stringNotANumber": "Deze waarde is geen getal.",
+				"invalidPassword": "Ongeldig wachtwoord",
+				"invalidPhone": "Ongeldig telefoonnummer, vb: (123) 456-9999",
+				"invalidPattern": "Dit veld moet overeenkomen met patroon {0}",
+                "stringTooShort": "Dit veld moet minstens {0} tekens bevatten",
+                "stringTooLong": "Dit veld moet minder dan {0} tekens bevatten"
             }
         }
     });
