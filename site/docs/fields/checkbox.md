@@ -34,7 +34,17 @@ $("#field2").alpaca({
     "data": true,
     "options": {
         "label": "Question:",
-        "rightLabel": "Do you like Alpaca?"
+        "rightLabel": "Do you like Alpaca?",
+        "form": {
+            "buttons": {
+                "view": {
+                    "label": "View JSON",
+                    "click": function() {
+                        alert(JSON.stringify(this.getValue(), null, "  "));
+                    }
+                }
+            }
+        }
     }
 });
 </script>
@@ -121,6 +131,130 @@ $("#field5").alpaca({
                     "click": function() {
                         alert(JSON.stringify(this.getValue(), null, "  "));
                     }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endraw %}
+
+
+## Example 6
+Checkbox Field for multiple values with it's selection options loaded from a data source.
+<div id="field6"> </div>
+{% raw %}
+<script type="text/javascript" id="field6-script">
+$("#field6").alpaca({
+    "data": ["Vanilla", "Chocolate"],    
+    "options": {
+        "label": "Ice cream",
+        "type": "checkbox",
+        "multiple": true,
+        "dataSource": "/data/icecream-list.json"
+    }
+});
+</script>
+{% endraw %}
+
+
+
+## Example 7
+A checkbox field that uses an enumerated value set on an array to specify the selection options.  This is in accordance
+with JSON schema v4.
+<div id="field7"> </div>
+{% raw %}
+<script type="text/javascript" id="field7-script">
+$("#field7").alpaca({
+    "schema": {
+        "type": "object",
+        "properties": {
+            "checkboxArrayEnum": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "option1",
+                        "option2",
+                        "option3"
+                    ]
+                }
+            }
+        },
+        "required": [
+            "checkboxArrayEnum"
+        ]
+    },
+    "options": {
+        "fields": {
+            "checkboxArrayEnum": {
+                "label": "Checkbox Array Enum",
+                "type": "checkbox",
+                "items": {
+                    "optionLabels": [
+                        "Option #1",
+                        "Option #2",
+                        "Option #3"
+                    ]
+                }
+            }
+        },
+        "form": {
+            "buttons": {
+                "view": {
+                    "label": "View JSON",
+                    "click": function() {
+                        alert(JSON.stringify(this.getValue(), null, "  "));
+                    }
+                }
+            }        
+        }
+    },
+    "data": {
+        "checkboxArrayEnum": [
+            "option1",
+            "option3"
+        ]
+    }
+});
+</script>
+{% endraw %}
+
+## Example 8
+Checkbox Field as a dependency
+<div id="field8"> </div>
+{% raw %}
+<script type="text/javascript" id="field8-script">
+$("#field8").alpaca({
+    "data": {
+        "hidememberinfo": true
+    },
+    "schema": {
+        "type": "object",
+        "properties": {
+            "hidememberinfo": {
+                "type": "boolean"
+            },
+            "level": {
+                "type": "string",
+                "title": "Membership Level",
+                "enum": ["silver", "gold", "platinum"]
+            }
+        },
+        "dependencies": {
+            "level": ["hidememberinfo"]
+        }
+    },
+    "options": {
+        "fields": {
+            "hide": {
+                "type": "checkbox",
+                "rightLabel": "Hide membership information"
+            },
+            "level": {
+                "optionLabels": ["Silver", "Gold", "Platinum"],
+                "dependencies": {
+                    "hidememberinfo": false
                 }
             }
         }

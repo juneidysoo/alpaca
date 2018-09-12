@@ -97,12 +97,14 @@
 
                 if (self.control)
                 {
+                    /*
                     // ACE HEIGHT
                     var aceHeight = self.options.aceHeight;
                     if (aceHeight)
                     {
                         $(self.control).css("height", aceHeight);
                     }
+                    */
 
                     // ACE WIDTH
                     var aceWidth = self.options.aceWidth;
@@ -146,6 +148,9 @@
                     self.editor.setShowPrintMargin(false);
 
                     // set data onto editor
+                    if (!self.data) {
+                        self.data = "";
+                    }
                     self.editor.setValue(self.data);
                     self.editor.clearSelection();
 
@@ -187,6 +192,15 @@
                         // Whenever a change happens inside the ACE editor, update
                         // the size again
                         self.editor.getSession().on('change', heightUpdateFunction);
+                    }
+                    else
+                    {
+                        // ACE HEIGHT
+                        var aceHeight = self.options.aceHeight;
+                        if (aceHeight)
+                        {
+                            $(self.control).css("min-height", aceHeight + "px");
+                        }
                     }
 
                     // READONLY
@@ -325,6 +339,10 @@
                 {
                     // format
                     value = JSON.stringify(value, null, "    ");
+                }
+
+                if (!value) {
+                    value = "";
                 }
 
                 this.editor.setValue(value);

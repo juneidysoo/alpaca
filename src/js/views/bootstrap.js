@@ -40,8 +40,13 @@
         var fieldEl = this.getFieldEl();
 
         // required fields get a little star in their label
+        //var label = $(fieldEl).find("label.alpaca-control-label");
+        //$('<span class="alpaca-icon-required glyphicon glyphicon-star"></span>').prependTo(label);
         var label = $(fieldEl).find("label.alpaca-control-label");
-        $('<span class="alpaca-icon-required glyphicon glyphicon-star"></span>').prependTo(label);
+        if ($(label).length > 0)
+        {
+            $(label).append("<span class='alpaca-required-indicator'>(required)</span>")
+        }
 
     };
     callbacks["invalid"] = function()
@@ -114,6 +119,9 @@
         {
             $(fieldEl).find("label.alpaca-control-label").addClass("col-sm-3");
 
+            //align help text with input.
+            $(fieldEl).find(".help-block").addClass("col-sm-offset-3 col-sm-9");
+
             var wrapper = $("<div></div>");
             wrapper.addClass("col-sm-9");
 
@@ -164,7 +172,11 @@
             }
 
             // set up container to be collapsible
-            $(containerEl).addClass("collapse in");
+            $(containerEl).addClass("collapse");
+            if (!this.options.collapsed)
+            {
+                $(containerEl).addClass("in");
+            }
 
             // set up legend anchor
             if (!$(anchorEl).attr("data-target")) {

@@ -1,10 +1,10 @@
 <script type="text/x-handlebars-template">
 
-    {{#if hideNone}}
+    {{#if options.hideNone}}
     {{else}}
     <div class="radio">
         <label>
-            <input type="radio" {{#if options.readonly}}readonly="readonly"{{/if}} name="{{name}}" value=""/>{{{noneLabel}}}
+            <input type="radio" {{#if options.readonly}}readonly="readonly"{{/if}} name="{{name}}" value="" {{#if options._noData}}checked="checked"{{/if}}/>{{{options.noneLabel}}}
         </label>
     </div>
     {{/if}}
@@ -12,7 +12,7 @@
     {{#each selectOptions}}
     <div class="radio">
         <label>
-            <input type="radio" {{#if ../options.readonly}}readonly="readonly"{{/if}} name="{{../name}}" value="{{value}}" {{#compare value ../data}}checked="checked"{{/compare}}/>{{{text}}}
+            <input type="radio" {{#if ../options.readonly}}readonly="readonly"{{/if}} name="{{../name}}" value="{{value}}" {{#if selected}}checked="checked"{{/if}}/>{{{text}}}
         </label>
     </div>
     {{/each}}

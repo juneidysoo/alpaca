@@ -46,6 +46,13 @@
                 this.options.actionbarStyle = "top";
             }
 
+            if (!this.options.toolbarPosition) {
+                this.options.toolbarPosition = Alpaca.isEmpty(this.view.toolbarPosition) ? "top" : this.view.toolbarPosition;
+            }
+            if (!this.options.toolbarPosition) {
+                this.options.toolbarPosition = "top";
+            }
+
             if (!this.schema.items)
             {
                 this.schema.items = {};
@@ -56,18 +63,18 @@
                 this.options.items = {};
             }
 
-            // legacy - uniqueItems, maxItems, minItems
-            if (this.schema.items.maxItems) {
+            // offer some backward compability here as older version of Alpaca used to incorrectly look for
+            // maxItems, minItems and uniqueItems on the schema.items subobject.
+            // if not defined properly, we offer some automatic forward migration of these properties
+            if (this.schema.items && this.schema.items.maxItems && typeof(this.schema.maxItems) === "undefined") {
                 this.schema.maxItems = this.schema.items.maxItems;
                 delete this.schema.items.maxItems;
             }
-
-            if (this.schema.items.minItems) {
+            if (this.schema.items && this.schema.items.minItems && typeof(this.schema.minItems) === "undefined") {
                 this.schema.minItems = this.schema.items.minItems;
                 delete this.schema.items.minItems;
             }
-
-            if (this.schema.items.uniqueItems) {
+            if (this.schema.items && this.schema.items.uniqueItems && typeof(this.schema.uniqueItems) === "undefined") {
                 this.schema.uniqueItems = this.schema.items.uniqueItems;
                 delete this.schema.items.uniqueItems;
             }
@@ -110,17 +117,7 @@
                 });
             }
 
-            if (typeof(this.data) == "undefined")
-            {
-                this.data = [];
-            }
-
-            if (this.data == null)
-            {
-                this.data = [];
-            }
-
-            if ("" == this.data)
+            if (Alpaca.isEmpty(this.data) || this.data === "")
             {
                 this.data = [];
             }
@@ -149,8 +146,7 @@
 
             if (!Alpaca.isArray(this.data) && !Alpaca.isObject(this.data))
             {
-                Alpaca.logWarn("ArrayField data is not an array: " + JSON.stringify(this.data, null, "  "));
-                return;
+                return Alpaca.logWarn("ArrayField data is not an array: " + JSON.stringify(this.data, null, "  "));
             }
 
             //
@@ -209,7 +205,7 @@
             if (self.options.toolbar)
             {
                 for (var k in self.options.toolbar) {
-                    self.toolbar[k] = self.options.toolbar[k];
+                    self.toolbar[k] = Alpaca.copyOf(self.options.toolbar[k]);
                 }
             }
             if (typeof(self.toolbar.showLabels) === "undefined") {
@@ -236,7 +232,7 @@
             if (self.options.actionbar)
             {
                 for (var k2 in self.options.actionbar) {
-                    self.actionbar[k2] = self.options.actionbar[k2];
+                    self.actionbar[k2] = Alpaca.copyOf(self.options.actionbar[k2]);
                 }
             }
             if (typeof(self.actionbar.showLabels) === "undefined") {
@@ -305,8 +301,12 @@
         setValue: function(data)
         {
             var self = this;
+            
+            if (!data) {
+                data = [];
+            }
 
-            if (!data || !Alpaca.isArray(data))
+            if (!Alpaca.isArray(data))
             {
                 return;
             }
@@ -326,7 +326,7 @@
                     }
                     else
                     {
-                        self.removeItem(i);
+                        self.removeItem(i, null, true);
                     }
                 }
             }
@@ -357,27 +357,20 @@
                     {
                         var f = (function(i, data)
                         {
-                            return function(callback)
+                            return function(_done)
                             {
                                 self.addItem(i, itemSchema, itemOptions, data[i], function() {
-
-                                    // by the time we get here, we may have constructed a very large child chain of
-                                    // sub-dependencies and so we use nextTick() instead of a straight callback so as to
-                                    // avoid blowing out the stack size
-                                    Alpaca.nextTick(function() {
-                                        callback();
-                                    });
-
+                                    _done();
                                 });
                             };
-                        })(i, data[i]);
+                        })(i, data);
 
                         funcs.push(f);
 
                         i++;
                     }
 
-                    Alpaca.series(funcs, function() {
+                    Alpaca.parallel(funcs, function() {
                         // nothing
                     });
                 });
@@ -390,7 +383,7 @@
          */
         getContainerValue: function()
         {
-            // if we're empty and we're also not required, then we hand back undefined
+            // if we're empty and we're also not required, then we hand back empty set
             if (this.children.length === 0 && !this.isRequired())
             {
                 return [];
@@ -430,6 +423,9 @@
 
             if (self.data && self.data.length > 0)
             {
+                var totalItemCount = self.data.length;
+                var itemsByIndex = {};
+
                 // all items within the array have the same schema and options
                 // so we only need to load this once
                 self.resolveItemSchemaOptions(function(itemSchema, itemOptions, circular) {
@@ -449,19 +445,13 @@
 
                         var pf = (function(index, value)
                         {
-                            return function(callback)
+                            return function(_done)
                             {
                                 self.createItem(index, itemSchema, itemOptions, value, function(item) {
 
-                                    items.push(item);
+                                    itemsByIndex[index] = item;
 
-                                    // by the time we get here, we may have constructed a very large child chain of
-                                    // sub-dependencies and so we use nextTick() instead of a straight callback so as to
-                                    // avoid blowing out the stack size
-                                    Alpaca.nextTick(function() {
-                                        callback();
-                                    });
-
+                                    _done();
                                 });
                             };
 
@@ -470,7 +460,17 @@
                         funcs.push(pf);
                     }
 
-                    Alpaca.series(funcs, function(err) {
+                    Alpaca.parallel(funcs, function(err) {
+
+                        // restore intended order
+                        for (var i = 0; i < totalItemCount; i++)
+                        {
+                            var item = itemsByIndex[i];
+                            if (item) {
+                                items.push(item);
+                            }
+                        }
+
                         callback(items);
                     });
 
@@ -520,16 +520,7 @@
                         fieldControl.path = self.path + "[" + index + "]";
                         //fieldControl.nameCalculated = true;
                         fieldControl.render(null, function() {
-
-                            // remember the control
-                            self.refreshValidationState();
-                            self.updatePathAndName();
-
-                            // trigger update on the parent array
-                            self.triggerUpdate();
-
-                            if (cb)
-                            {
+                            if (cb) {
                                 cb();
                             }
                         });
@@ -544,6 +535,7 @@
                             "name": control.name,
                             "parentFieldId": self.getId(),
                             "actionbarStyle": self.options.actionbarStyle,
+							"toolbarLocation": self.options.toolbarLocation,
                             "view": self.view,
                             "data": itemData
                         });
@@ -624,10 +616,18 @@
             }
 
             // handle $ref
-            if (itemSchema && itemSchema["$ref"])
-            {
-                var referenceId = itemSchema["$ref"];
+            var schemaReferenceId = null;
+            if (itemSchema) {
+                schemaReferenceId = itemSchema["$ref"];
+            }
+            var optionsReferenceId = null;
+            if (itemOptions) {
+                optionsReferenceId = itemOptions["$ref"];
+            }
 
+            if (schemaReferenceId || optionsReferenceId)
+            {
+                // walk up to find top field
                 var topField = this;
                 var fieldChain = [topField];
                 while (topField.parent)
@@ -639,21 +639,24 @@
                 var originalItemSchema = itemSchema;
                 var originalItemOptions = itemOptions;
 
-                Alpaca.loadRefSchemaOptions(topField, referenceId, function(itemSchema, itemOptions) {
+                Alpaca.loadRefSchemaOptions(topField, schemaReferenceId, optionsReferenceId, function(itemSchema, itemOptions) {
 
-                    // walk the field chain to see if we have any circularity
+                    // walk the field chain to see if we have any circularity (for schema)
                     var refCount = 0;
                     for (var i = 0; i < fieldChain.length; i++)
                     {
                         if (fieldChain[i].schema)
                         {
-                            if ( (fieldChain[i].schema.id === referenceId) || (fieldChain[i].schema.id === "#" + referenceId))
+                            if (schemaReferenceId)
                             {
-                                refCount++;
-                            }
-                            else if ( (fieldChain[i].schema["$ref"] === referenceId))
-                            {
-                                refCount++;
+                                if ((fieldChain[i].schema.id === schemaReferenceId) || (fieldChain[i].schema.id === "#" + schemaReferenceId))
+                                {
+                                    refCount++;
+                                }
+                                else if ((fieldChain[i].schema["$ref"] === schemaReferenceId))
+                                {
+                                    refCount++;
+                                }
                             }
                         }
                     }
@@ -666,8 +669,7 @@
                     if (originalItemSchema) {
                         Alpaca.mergeObject(resolvedItemSchema, originalItemSchema);
                     }
-                    if (itemSchema)
-                    {
+                    if (itemSchema) {
                         Alpaca.mergeObject(resolvedItemSchema, itemSchema);
                     }
                     delete resolvedItemSchema.id;
@@ -676,8 +678,7 @@
                     if (originalItemOptions) {
                         Alpaca.mergeObject(resolvedItemOptions, originalItemOptions);
                     }
-                    if (itemOptions)
-                    {
+                    if (itemOptions) {
                         Alpaca.mergeObject(resolvedItemOptions, itemOptions);
                     }
 
@@ -826,7 +827,7 @@
             var action = null;
 
             $.each(actionsArray, function(i, v) {
-                if (v.action == actionKey) // jshint ignore:line
+                if (v.action === actionKey) // jshint ignore:line
                 {
                     action = v;
                 }
@@ -869,6 +870,18 @@
         },
 
         /**
+         * @OVERRIDE
+         *
+         * Adjust the path and name ahead of refreshing the DOM.
+         */
+        updateDOMElement: function()
+        {
+            this.updatePathAndName();
+
+            this.base();
+        },
+
+        /**
          * This method gets invoked after items are dynamically added, removed or moved around in the child chain.
          * It adjusts classes on child DOM elements to make sure they're correct.
          */
@@ -882,10 +895,10 @@
                 {
                     $.each(parent.children, function(i, v) {
 
-                        if (parent.prePath && Alpaca.startsWith(v.path,parent.prePath))
+                        if (parent.prePath && Alpaca.startsWith(v.path, parent.prePath))
                         {
                             v.prePath = v.path;
-                            v.path = v.path.replace(parent.prePath,parent.path);
+                            v.path = v.path.replace(parent.prePath, parent.path);
                         }
 
                         // re-calculate name
@@ -895,7 +908,7 @@
                             v.name = v.name.replace(parent.preName, parent.name);
                             if (v.field)
                             {
-                                $(v.field).attr('name', v.name);
+                                $(v.field).attr("name", v.name);
                             }
                         }
 
@@ -910,15 +923,16 @@
 
                     var idx = v.path.lastIndexOf('/');
                     var lastSegment = v.path.substring(idx+1);
-                    if (lastSegment.indexOf("[") < 0 && lastSegment.indexOf("]") < 0)
+                    var lastIndex = -1;
+                    if (lastSegment.indexOf("[") > 0 && lastSegment.indexOf("]") > 0)
                     {
-                        lastSegment = lastSegment.substring(lastSegment.indexOf("[") + 1, lastSegment.indexOf("]"));
+                        lastIndex = parseInt(lastSegment.substring(lastSegment.indexOf("[") + 1, lastSegment.indexOf("]")));
                     }
 
-                    if (lastSegment !== i)
+                    if (lastIndex !== i)
                     {
                         v.prePath = v.path;
-                        v.path = v.path.substring(0, idx) + "/[" + i + "]";
+                        v.path = v.path.substring(0, idx) + "/" + lastSegment.substring(0, lastSegment.indexOf("[")) + "[" + i + "]";
                     }
 
                     // re-calculate name
@@ -940,11 +954,11 @@
 
                         if (this.parent.options.rubyrails )
                         {
-                            $(v.field).attr('name', v.parent.name);
+                            $(v.field).attr("name", v.parent.name);
                         }
                         else
                         {
-                            $(v.field).attr('name', v.name);
+                            $(v.field).attr("name", v.name);
                         }
 
                     }
@@ -1052,7 +1066,7 @@
             else if (this.options.toolbarSticky)
             {
                 // always show the actionbars
-                $(self.getFieldEl()).find(".alpaca-array-actionbar[data-alpaca-array-actionbar-parent-field-id='" + self.getId() +  "']").show();
+                $(self.getFieldEl()).find(".alpaca-array-actionbar[data-alpaca-array-actionbar-parent-field-id='" + self.getId() +  "']").css("display", "inline-block");
             }
             else if (!this.options.toolbarSticky)
             {
@@ -1061,6 +1075,7 @@
             }
 
             // CLICK: actionbar buttons
+            // NOTE: actionbarEls size should be 0 or 1
             var actionbarEls = $(self.getFieldEl()).find(".alpaca-array-actionbar[data-alpaca-array-actionbar-parent-field-id='" + self.getId() + "']");
             $(actionbarEls).each(function() {
 
@@ -1071,7 +1086,7 @@
                 }
 
                 // bind button click handlers
-                $(this).find("[data-alpaca-array-actionbar-action]").each(function() {
+                $(this).children("[data-alpaca-array-actionbar-action]").each(function() {
 
                     var actionKey = $(this).attr("data-alpaca-array-actionbar-action");
                     var action = self.findAction(self.actionbar.actions, actionKey);
@@ -1087,24 +1102,24 @@
                 // if we're at max capacity, disable "add" buttons
                 if (self._validateEqualMaxItems())
                 {
-                    $(this).find("[data-alpaca-array-toolbar-action='add']").each(function(index) {
+                    $(this).children("[data-alpaca-array-toolbar-action='add']").each(function(index) {
                         $(this).removeClass('alpaca-button-disabled');
                         self.fireCallback("enableButton", this);
                     });
 
-                    $(this).find("[data-alpaca-array-actionbar-action='add']").each(function(index) {
+                    $(this).children("[data-alpaca-array-actionbar-action='add']").each(function(index) {
                         $(this).removeClass('alpaca-button-disabled');
                         self.fireCallback("enableButton", this);
                     });
                 }
                 else
                 {
-                    $(this).find("[data-alpaca-array-toolbar-action='add']").each(function(index) {
+                    $(this).children("[data-alpaca-array-toolbar-action='add']").each(function(index) {
                         $(this).addClass('alpaca-button-disabled');
                         self.fireCallback("disableButton", this);
                     });
 
-                    $(this).find("[data-alpaca-array-actionbar-action='add']").each(function(index) {
+                    $(this).children("[data-alpaca-array-actionbar-action='add']").each(function(index) {
                         $(this).addClass('alpaca-button-disabled');
                         self.fireCallback("disableButton", this);
                     });
@@ -1113,26 +1128,26 @@
                 // if we're at min capacity, disable "remove" buttons
                 if (self._validateEqualMinItems())
                 {
-                    $(this).find("[data-alpaca-array-actionbar-action='remove']").each(function(index) {
+                    $(this).children("[data-alpaca-array-actionbar-action='remove']").each(function(index) {
                         $(this).removeClass('alpaca-button-disabled');
                         self.fireCallback("enableButton", this);
                     });
                 }
                 else
                 {
-                    $(this).find("[data-alpaca-array-actionbar-action='remove']").each(function(index) {
+                    $(this).children("[data-alpaca-array-actionbar-action='remove']").each(function(index) {
                         $(this).addClass('alpaca-button-disabled');
                         self.fireCallback("disableButton", this);
                     });
                 }
             });
             // first actionbar has its "move up" button disabled
-            $(actionbarEls).first().find("[data-alpaca-array-actionbar-action='up']").each(function() {
+            $(actionbarEls).first().children("[data-alpaca-array-actionbar-action='up']").each(function() {
                 $(this).addClass('alpaca-button-disabled');
                 self.fireCallback("disableButton", this);
             });
             // last actionbar has its "move down" button disabled
-            $(actionbarEls).last().find("[data-alpaca-array-actionbar-action='down']").each(function() {
+            $(actionbarEls).last().children("[data-alpaca-array-actionbar-action='down']").each(function() {
                 $(this).addClass('alpaca-button-disabled');
                 self.fireCallback("disableButton", this);
             });
@@ -1191,8 +1206,16 @@
                     return Alpaca.throwErrorWithCallback("Circular reference detected for schema: " + JSON.stringify(itemSchema), self.errorCallback);
                 }
 
+                var arrayValues = self.getValue();
+
                 var itemData = Alpaca.createEmptyDataInstance(itemSchema);
                 self.addItem(itemIndex + 1, itemSchema, itemOptions, itemData, function(item) {
+
+                    // this is necessary because some underlying fields require their data to be reset
+                    // in order for the display to work out properly (radio fields)
+                    arrayValues.splice(itemIndex + 1, 0, item.getValue());
+                    self.setValue(arrayValues);
+
                     if (callback) {
                         callback(item);
                     }
@@ -1215,7 +1238,7 @@
         {
             var self = this;
 
-            self.moveItem(itemIndex, itemIndex - 1, self.options.animate, function() {
+            self.swapItem(itemIndex, itemIndex - 1, self.options.animate, function() {
                 if (callback) {
                     callback();
                 }
@@ -1226,14 +1249,14 @@
         {
             var self = this;
 
-            self.moveItem(itemIndex, itemIndex + 1, self.options.animate, function() {
+            self.swapItem(itemIndex, itemIndex + 1, self.options.animate, function() {
                 if (callback) {
                     callback();
                 }
             });
         },
 
-        doAddItem: function(index, item)
+        doAddItem: function(index, item, callback)
         {
             var self = this;
 
@@ -1256,12 +1279,18 @@
                 }
             }
 
-            self.doAfterAddItem(item);
+            self.doAfterAddItem(item, function(err) {
+
+                // trigger ready
+                Alpaca.fireReady(item);
+
+                callback(err);
+            });
         },
 
-        doAfterAddItem: function(item)
+        doAfterAddItem: function(item, callback)
         {
-
+            callback();
         },
 
         /**
@@ -1288,41 +1317,51 @@
                     self.registerChild(item, index);
 
                     // insert into dom
-                    self.doAddItem(index, item);
+                    self.doAddItem(index, item, function() {
 
-                    // updates dom markers for this element and any siblings
-                    self.handleRepositionDOMRefresh();
+                        // updates dom markers for this element and any siblings
+                        self.handleRepositionDOMRefresh();
 
-                    // update the array item toolbar state
-                    self.updateToolbars();
+                        // update the array item toolbar state
+                        self.updateToolbars();
 
-                    // refresh validation state
-                    self.refreshValidationState();
+                        // refresh validation state
+                        self.refreshValidationState();
 
-                    // dispatch event: add
-                    self.trigger("add", item);
+                        // dispatch event: add
+                        self.trigger("add", item);
 
-                    // trigger update
-                    self.triggerUpdate();
+                        // trigger update
+                        self.triggerUpdate();
 
-                    // trigger "ready"
-                    item.triggerWithPropagation.call(item, "ready", "down");
+                        if (callback)
+                        {
+                            Alpaca.nextTick(function() {
+                                callback(item);
+                            });
+                        }
 
-                    if (callback)
-                    {
-                        callback(item);
-                    }
+                    });
                 });
             }
         },
 
-        doRemoveItem: function(childIndex)
+        doRemoveItem: function(childIndex, callback)
         {
             var self = this;
 
             var removeItemContainer = self.doResolveItemContainer();
 
             removeItemContainer.children(".alpaca-container-item[data-alpaca-container-item-index='" + childIndex + "']").remove();
+
+            self.doAfterRemoveItem(childIndex, function(err) {
+                callback(err);
+            });
+        },
+
+        doAfterRemoveItem: function(childIndex, callback)
+        {
+            callback();
         },
 
         /**
@@ -1333,48 +1372,53 @@
 
          * @param {Number} childIndex index of the child to be removed
          * @param [Function] callback called after the child is removed
+         * @param [boolean] force whether to force the removal
          */
-        removeItem: function(childIndex, callback)
+        removeItem: function(childIndex, callback, force)
         {
             var self = this;
 
-            if (this._validateEqualMinItems())
+            if (this._validateEqualMinItems() || force)
             {
                 // unregister the child
                 self.unregisterChild(childIndex);
 
                 // remove itemContainerEl from DOM
-                self.doRemoveItem(childIndex);
+                self.doRemoveItem(childIndex, function() {
 
-                // updates dom markers for this element and any siblings
-                self.handleRepositionDOMRefresh();
+                    // updates dom markers for this element and any siblings
+                    self.handleRepositionDOMRefresh();
 
-                // update the array item toolbar state
-                self.updateToolbars();
+                    // update the array item toolbar state
+                    self.updateToolbars();
 
-                // refresh validation state
-                self.refreshValidationState();
+                    // refresh validation state
+                    self.refreshValidationState();
 
-                // dispatch event: remove
-                self.trigger("remove", childIndex);
+                    // dispatch event: remove
+                    self.trigger("remove", childIndex);
 
-                // trigger update
-                self.triggerUpdate();
+                    // trigger update
+                    self.triggerUpdate();
 
-                if (callback)
-                {
-                    callback();
-                }
+                    if (callback)
+                    {
+                        Alpaca.nextTick(function() {
+                            callback();
+                        });
+                    }
+
+                });
             }
         },
 
         /**
-         * Dynamically moves a child to a new index in the array.
+         * Workhorse method for moving an item in the array to a new index.
          *
          * @param {Number} sourceIndex the index of the child to be moved
          * @param {Number} targetIndex the index to be moved to
-         * @param {Boolean} animate whether to animate the movement
-         * @param [Function] callback called after the child is added
+         * @param [Boolean] animate whether to animate
+         * @param [Function] callback called after the child is added and refresh occurs
          */
         moveItem: function(sourceIndex, targetIndex, animate, callback)
         {
@@ -1412,7 +1456,7 @@
 
             if (targetIndex === -1)
             {
-                // nothing to swap with
+                // no target index
                 return;
             }
 
@@ -1422,8 +1466,6 @@
                 return;
             }
 
-            //console.log("Source: " + sourceIndex + ", Target: " + targetIndex);
-
             var targetChild = self.children[targetIndex];
             if (!targetChild)
             {
@@ -1431,66 +1473,38 @@
                 return;
             }
 
-            var parentFieldId = self.getId();
-
-            // the source and target DOM elements
-            var sourceContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + sourceIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
-            var targetContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + targetIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
-
-            // create two temp elements as markers for switch
-            var tempSourceMarker = $("<div class='tempMarker1'></div>");
-            sourceContainer.before(tempSourceMarker);
-            var tempTargetMarker = $("<div class='tempMarker2'></div>");
-            targetContainer.before(tempTargetMarker);
-
             var onComplete = function()
             {
-                // swap order in children
-                var tempChildren = [];
-                for (var i = 0; i < self.children.length; i++)
-                {
-                    if (i === sourceIndex)
-                    {
-                        tempChildren[i] = self.children[targetIndex];
-                    }
-                    else if (i === targetIndex)
-                    {
-                        tempChildren[i] = self.children[sourceIndex];
-                    }
-                    else
-                    {
-                        tempChildren[i] = self.children[i];
-                    }
+                var adjustedTargetIndex = targetIndex;
+                if (sourceIndex < targetIndex) {
+                    adjustedTargetIndex--;
                 }
-                self.children = tempChildren;
 
-                // swap order in DOM
-                tempSourceMarker.replaceWith(targetContainer);
-                tempTargetMarker.replaceWith(sourceContainer);
+                // splice out child
+                var child = self.children.splice(sourceIndex, 1)[0];
+                self.children.splice(adjustedTargetIndex, 0, child);
 
-                // updates dom markers for this element and any siblings
-                self.handleRepositionDOMRefresh();
+                // set data and refresh
+                self.data = self.getValue();
+                self.refresh(function() {
 
-                // update the action bar bindings
-                $(sourceContainer).find(".alpaca-container-item[data-alpaca-array-actionbar-item-index='" + sourceIndex + "'][data-alpaca-container-item-parent-field-id='" + self.getId() +  "']").attr("data-alpaca-array-actionbar-item-index", targetIndex);
-                $(targetContainer).find(".alpaca-container-item[data-alpaca-array-actionbar-item-index='" + targetIndex + "'][data-alpaca-container-item-parent-field-id='" + self.getId() +  "']").attr("data-alpaca-array-actionbar-item-index", sourceIndex);
+                    // refresh validation state
+                    self.refreshValidationState();
 
-                // update the array item toolbar state
-                self.updateToolbars();
+                    // trigger update
+                    self.triggerUpdate();
 
-                // refresh validation state
-                self.refreshValidationState();
+                    // dispatch event: move
+                    self.trigger("move");
 
-                // trigger update
-                self.triggerUpdate();
+                    if (callback)
+                    {
+                        Alpaca.nextTick(function() {
+                            callback();
+                        });
+                    }
 
-                // dispatch event: move
-                self.trigger("move");
-
-                if (callback)
-                {
-                    callback();
-                }
+                });
             };
 
             var duration = 0;
@@ -1499,10 +1513,152 @@
                 duration = 500;
             }
 
-            // swap divs visually
-            Alpaca.animatedSwap(sourceContainer, targetContainer, duration, function() {
+            if (duration > 0)
+            {
+                var parentFieldId = self.getId();
+
+                // the source and target DOM elements
+                var sourceContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + sourceIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
+                var targetContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + targetIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
+
+                // create two temp elements as markers for switch
+                var tempSourceMarker = $("<div class='tempMarker1'></div>");
+                sourceContainer.before(tempSourceMarker);
+                var tempTargetMarker = $("<div class='tempMarker2'></div>");
+                targetContainer.before(tempTargetMarker);
+
+                // moves div visually
+                Alpaca.animatedMove(sourceContainer, targetContainer, duration, function () {
+                    onComplete();
+                });
+            }
+            else
+            {
                 onComplete();
-            });
+            }
+        },
+
+        /**
+         * Workhorse method for swapping an item from one index in the array to another.
+         *
+         * @param {Number} sourceIndex the index of the child to be moved
+         * @param {Number} targetIndex the index to be moved to
+         * @param [Boolean] animate whether to animate
+         * @param [Function] callback called after the child is added and refresh occurs
+         */
+        swapItem: function(sourceIndex, targetIndex, animate, callback)
+        {
+            var self = this;
+
+            if (typeof(animate) == "function")
+            {
+                callback = animate;
+                animate = self.options.animate;
+            }
+
+            if (typeof(animate) == "undefined")
+            {
+                animate = self.options.animate ? self.options.animate : true;
+            }
+
+            if (typeof(sourceIndex) === "string")
+            {
+                sourceIndex = parseInt(sourceIndex, 10);
+            }
+
+            if (typeof(targetIndex) === "string")
+            {
+                targetIndex = parseInt(targetIndex, 10);
+            }
+
+            if (targetIndex < 0)
+            {
+                targetIndex = 0;
+            }
+            if (targetIndex >= self.children.length)
+            {
+                targetIndex = self.children.length - 1;
+            }
+
+            if (targetIndex === -1)
+            {
+                // no target index
+                return;
+            }
+
+            if (sourceIndex === targetIndex)
+            {
+                // nothing to do
+                return;
+            }
+
+            var targetChild = self.children[targetIndex];
+            if (!targetChild)
+            {
+                // target child not found
+                return;
+            }
+
+            var onComplete = function()
+            {
+                var sourceChild = self.children[sourceIndex];
+                var targetChild = self.children[targetIndex];
+
+                self.children[sourceIndex] = targetChild;
+                self.children[targetIndex] = sourceChild;
+
+                // copy back data and refresh
+                self.data = self.getValue();
+                self.refresh(function() {
+
+                    // refresh validation state
+                    self.refreshValidationState();
+
+                    // trigger update
+                    self.triggerUpdate();
+
+                    // dispatch event: move
+                    self.trigger("move");
+
+                    if (callback)
+                    {
+                        Alpaca.nextTick(function() {
+                            callback();
+                        });
+                    }
+
+                });
+            };
+
+            var duration = 0;
+            if (animate)
+            {
+                duration = 500;
+            }
+
+            if (duration > 0)
+            {
+                var parentFieldId = self.getId();
+
+                // the source and target DOM elements
+                var sourceContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + sourceIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
+                var targetContainer = self.getContainerEl().find(".alpaca-container-item[data-alpaca-container-item-index='" + targetIndex + "'][data-alpaca-container-item-parent-field-id='" + parentFieldId + "']");
+
+                // create two temp elements as markers for switch
+                var tempSourceMarker = $("<div class='tempMarker1'></div>");
+                sourceContainer.before(tempSourceMarker);
+                var tempTargetMarker = $("<div class='tempMarker2'></div>");
+                targetContainer.before(tempTargetMarker);
+
+                // swap divs visually
+                Alpaca.animatedSwap(sourceContainer, targetContainer, duration, function () {
+                    onComplete();
+                });
+            }
+            else
+            {
+                onComplete();
+            }
         },
 
         /**
@@ -1608,6 +1764,12 @@
                         "description": "The kind of top-level toolbar to render for the array field.  Either 'button' or 'link'.",
                         "type": "string",
                         "default": "button"
+                    },
+                    "toolbarPosition": {
+                        "title": "Toolbar Position",
+                        "description": "Location of the top-level toolbar to render for the array field.  Either 'top' or 'bottom'.",
+                        "type": "string",
+                        "default": "top"
                     },
                     "actionbarStyle": {
                         "title": "Actionbar Style",

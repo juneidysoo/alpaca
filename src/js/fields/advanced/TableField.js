@@ -40,8 +40,9 @@
             }
 
             // support for either "datatable" or "datatables"
-            if (this.options.datatable) {
-                this.options.datatables = this.options.datatable;
+            if (this.options["datatable"]) {
+                this.options.datatables = this.options["datatable"];
+                delete this.options["datatable"];
             }
 
             // assume empty options for datatables
@@ -54,6 +55,22 @@
                     "searching": false,
                     "ordering": true
                 };
+
+                // draggable reorder of rows
+                if (typeof(this.options.dragRows) == "undefined")
+                {
+                    this.options.dragRows = false;
+                }
+
+                if (this.options.readonly)
+                {
+                    this.options.dragRows = false;
+                }
+
+                if (this.isDisplayOnly())
+                {
+                    this.options.dragRows = false;
+                }
             }
 
             // assume actions column to be shown
@@ -80,11 +97,35 @@
             {
                 $.fn.DataTable.ext.order["alpaca"] = function (settings, col) {
 
-                    return this.api().column( col, {order:'index'} ).nodes().map( function ( td, i ) {
-                        var alpacaId = $(td).children().attr("data-alpaca-field-id");
-                        return Alpaca.fieldInstances[alpacaId].getValue();
-                    } );
+                    // ensure that data property has latest value
+                    self.data = self.getValue();
 
+                    var propertyName = null;
+
+                    // find the property by index
+                    var c = 0;
+                    for (var k in self.schema.items.properties) {
+                        if (c === col) {
+                            propertyName = k;
+                            break;
+                        }
+                        c++;
+                    }
+
+                    // collect values
+                    var values = [];
+                    if (self.data)
+                    {
+                        for (var i = 0; i < self.data.length; i++)
+                        {
+                            values.push(self.data[i][propertyName]);
+                        }
+                    }
+
+                    // sort values
+                    values.sort();
+
+                    return values;
                 };
 
                 // this is a kind of hacky function at the moment, trying to do filtering that takes into account
@@ -96,6 +137,7 @@
                 //
                 $.fn.dataTableExt.afnFiltering.push(function(settings, fields, fieldIndex, data, dataIndex) {
 
+                    // TODO
                     var text = $(settings.nTableWrapper).find(".dataTables_filter input[type='search']").val();
 
                     if (!text) {
@@ -184,6 +226,13 @@
             });
         },
 
+        getTableEl: function()
+        {
+            var self = this;
+
+            return $($(self.container).find("table")[0]);
+        },
+
         /**
          * The table field uses the "array" container convention to render the DOM.  As such, nested objects are wrapped
          * in "field" elements that result in slightly incorrect table structures.  Part of the reason for this is that
@@ -203,7 +252,7 @@
                 self.cleanupDomInjections();
 
                 // apply styles of underlying "table"
-                var table = $(this.container).find("table");
+                var table = self.getTableEl();
                 self.applyStyle("table", table);
 
                 // if the DataTables plugin is available, use it
@@ -211,30 +260,138 @@
                 {
                     if ($.fn.DataTable)
                     {
-                        // mix in fields from the items
-                        for (var k in self.schema.items.properties)
+                        if (self.options.datatables.columns.length === 0)
                         {
-                            self.options.datatables.columns.push({
-                                "orderable": true,
-                                "orderDataType": "alpaca"
-                            });
+                            // if we're setting up for dragging rows, then add that column
+                            if (self.options.dragRows)
+                            {
+                                self.options.datatables.columns.push({
+                                    "orderable": false,
+                                    "name": "dragRowsIndex",
+                                    "hidden": true
+                                });
+
+                                self.options.datatables.columns.push({
+                                    "orderable": false,
+                                    "name": "dragRowsDraggable"
+                                });
+                            }
+
+                            // mix in fields from the items
+                            for (var k in self.schema.items.properties)
+                            {
+                                var colConfig = {
+                                    "orderable": true,
+                                    "orderDataType": "alpaca"
+                                };
+
+                                self.options.datatables.columns.push(colConfig);
+                            }
+
+                            // if we have an actions column enabled, then turn off sorting for the actions column (assumed to be last)
+                            if (self.options.showActionsColumn)
+                            {
+                                self.options.datatables.columns.push({
+                                    "orderable": false,
+                                    "name": "actions"
+                                });
+                            }
                         }
 
-                        // if we have an actions column enabled, then turn off sorting for the actions column (assumed to be last)
-                        if (self.options.showActionsColumn)
+                        if (self.options.dragRows)
                         {
-                            self.options.datatables.columns.push({
-                                "orderable": false,
-                                "name": "actions"
-                            });
+                            self.options.datatables["rowReorder"] = {
+                                "selector": "tr td.alpaca-table-reorder-draggable-cell",
+                                "dataSrc": 0,
+                                "snapX": true,
+                                "update": true
+                            };
                         }
 
-                        $(this.container).find("table").DataTable(self.options.datatables);
+                        // EVENT HANDLERS
+
+                        // listen for the "ready" event and when it fires, init data tables
+                        // this ensures that the DOM and anything wrapping our table field instance is ready to rock
+                        // before we proceed
+                        self.off("ready");
+                        self.on("ready", function() {
+
+                            // tear down old data tables data if it is still around
+                            if (self._dt) {
+                                self._dt.destroy();
+                                self._dt = undefined;
+                            }
+
+                            // table dom element
+                            var table = self.getTableEl();
+
+                            // data table reference
+                            self._dt = $(table).DataTable(self.options.datatables);
+
+                            // listen for the "row-reorder" event
+                            self._dt.on("row-reorder", function(e, diff, edit) {
+
+                                if (self._dt._disableAlpacaHandlers) {
+                                    return;
+                                }
+
+                                // update our data structure to reflect the shift in positions
+                                if (diff.length > 0)
+                                {
+                                    if (diff[0].oldPosition !== diff[0].newPosition)
+                                    {
+                                        self._dt._disableAlpacaHandlers = true;
+                                        self.moveItem(diff[0].oldPosition, diff[0].newPosition, false, function() {
+                                            // all done
+                                        });
+                                    }
+                                }
+                            });
+
+                            // listen for the underlying table DOM element being destroyed
+                            // when that happens, tear down the datatables implementation as well
+                            $(self.container).bind('destroyed', function() {
+                                if (self._dt) {
+                                    self._dt.destroy();
+                                    self._dt = undefined;
+                                }
+                            });
+
+                            // listen for the sorting event
+                            // change the order of children and refresh
+                            self._dt.on('order', function ( e, ctx, sorting, columns ) {
+
+                                if (self._dt._disableAlpacaHandlers) {
+                                    return;
+                                }
+
+                                // if we don't have an original copy of the children, make one
+                                // we're about to re-order the children and datatable assumes we know the original order
+                                if (!self._dt._originalChildren) {
+                                    self._dt._originalChildren = [];
+                                    for (var k = 0; k < self.children.length; k++) {
+                                        self._dt._originalChildren.push(self.children[k]);
+                                    }
+                                }
+
+                                // re-order based on the order that datatables believes is right
+                                var newChildren = [];
+                                for (var z = 0; z < ctx.aiDisplay.length; z++)
+                                {
+                                    var index = ctx.aiDisplay[z];
+                                    newChildren.push(self._dt._originalChildren[index]);
+                                }
+                                self.children = newChildren;
+
+                                self._dt._disableAlpacaHandlers = false;
+                            });
+
+                        });
                     }
                 }
 
                 // walk through headers and allow for callback-based config
-                $(table).find("thead > tr > th[data-header-id]").each(function() {
+                $(table).children("thead > tr > th[data-header-id]").each(function() {
 
                     var key = $(this).attr("data-header-id");
 
@@ -260,11 +417,13 @@
 
                 callback();
 
-            }.bind(self));
+            });//.bind(self));
         },
 
         cleanupDomInjections: function()
         {
+            var self = this;
+
             /**
              * Takes a DOM element and merges it "up" to the parent element.  Data attributes and some classes are
              * copied from DOM element into the parent element.  The children of the DOM element are added to the
@@ -278,7 +437,7 @@
                 var mergeElementChildren = $(mergeElement).children();
 
                 // copy merge element classes to parent
-                var classNames =$(mergeElement).attr('class').split(/\s+/);
+                var classNames = $(mergeElement).attr('class').split(/\s+/);
                 $.each( classNames, function(index, className){
                     if (className === "alpaca-merge-up") {
                         // skip
@@ -306,18 +465,20 @@
                 }
             };
 
+            var trElements = self.getTableEl().children("tbody").children("tr");
+
             // find each TR's .alpaca-field and merge up
-            this.getFieldEl().find("tr > .alpaca-field").each(function() {
+            $(trElements).children(".alpaca-field").each(function() {
                 mergeElementUp(this);
             });
 
             // find each TR's .alpaca-container and merge up
-            this.getFieldEl().find("tr > .alpaca-container").each(function() {
+            $(trElements).children(".alpaca-container").each(function() {
                 mergeElementUp(this);
             });
 
-            // find the action bar and slip a TD around it
-            var alpacaArrayActionbar = this.getFieldEl().find("." + Alpaca.MARKER_CLASS_ARRAY_ITEM_ACTIONBAR);
+            // find any action bars for our field and slip a TD around them
+            var alpacaArrayActionbar = self.getFieldEl().find("." + Alpaca.MARKER_CLASS_ARRAY_ITEM_ACTIONBAR + "[" + Alpaca.MARKER_DATA_ARRAY_ITEM_FIELD_ID + "='" + self.getId() + "']");
             if (alpacaArrayActionbar.length > 0)
             {
                 alpacaArrayActionbar.each(function() {
@@ -327,9 +488,56 @@
                 });
             }
 
+            // find any alpaca-table-reorder-draggable-cells and slip a TD around them
+            var alpacaTableReorderDraggableCells = self.getTableEl().children("tbody").children("tr").children("td.alpaca-table-reorder-draggable-cell");
+            if (alpacaTableReorderDraggableCells.length > 0)
+            {
+                alpacaTableReorderDraggableCells.each(function() {
+                    var td = $("<td class='alpaca-table-reorder-draggable-cell'></td>");
+                    $(this).before(td);
+                    $(td).append($(this).children());
+                    $(this).remove();
+                });
+            }
+
+            // find any alpaca-table-reorder-draggable-cell elements and slip a TD around them
+            //var alpacaTableReorderIndexCells = self.getTableEl().children("tbody").children("tr").children("td.alpaca-table-reorder-draggable-cell");
+
+            // find any alpaca-table-reorder-index-cell elements and slip a TD around them
+            var alpacaTableReorderIndexCells = self.getTableEl().children("tbody").children("tr").children("td.alpaca-table-reorder-index-cell");
+            if (alpacaTableReorderIndexCells.length > 0)
+            {
+                alpacaTableReorderIndexCells.each(function(i) {
+                    var td = $("<td class='alpaca-table-reorder-index-cell'>" + i + "</td>");
+                    $(this).before(td);
+                    $(this).remove();
+                });
+            }
+
+            /*
             // find anything else with .alpaca-merge-up and merge up
-            this.getFieldEl().find(".alpaca-merge-up").each(function() {
+            this.getFieldEl().find(".alpaca-merge-up[data-merge-up-field-id='" + self.getId() + "']").each(function() {
                 mergeElementUp(this);
+            });
+            */
+
+            // find anything else with .alpaca-merge-up and merge up
+            $(trElements).each(function() {
+                var trAlpacaId = $(this).attr("data-alpaca-field-id");
+
+                // inject the TD to wrap
+                $(this).find(".alpaca-merge-up[data-merge-up-field-id='" + trAlpacaId + "'][data-alpaca-merge-tag='td']").each(function() {
+
+                    var td = $("<td></td>");
+                    $(this).before(td);
+                    $(td).append(this);
+
+                    mergeElementUp(this);
+
+                    $(td).attr("data-alpaca-merge-tag", null);
+                    $(td).attr("data-merge-up-field-id", null);
+                });
+
             });
         },
 
@@ -337,21 +545,72 @@
         {
             var self = this;
 
-            return $(self.container).find("table tbody");
+            return self.getTableEl().children("tbody");
         },
 
-        doAfterAddItem: function(item)
+        doAfterAddItem: function(item, callback)
         {
             var self = this;
 
+            self.data = self.getValue();
+
             self.cleanupDomInjections();
+
+            // if we're using dragRows support, we have no choice here except to completely reboot the table in order
+            // to get DataTables to bind things correctly for drag-drop support
+            // TODO: change dragRows to use our own drag/drop tooling and get rid of DataTables Row Reorder Plugin
+            // we also have do this if we've added the first row to get DataTables to redraw
+            var usingDataTables = self.options.datatables && $.fn.DataTable;
+            if (self.options.dragRows || (usingDataTables && self.data.length === 1))
+            {
+                // refresh
+                self.refresh(function() {
+                    callback();
+                });
+            }
+            else
+            {
+                // inform data tables that we've added a row
+                // we do this by finding the TR and then adding that way
+                if (self._dt)
+                {
+                    // TODO
+                    var tr = self.field.find("[data-alpaca-field-path='" + item.path + "']");
+                    self._dt.row.add(tr);//.draw(false);
+                }
+
+                callback();
+            }
         },
 
-        doAfterRemoveItem: function(item)
+        doAfterRemoveItem: function(childIndex, callback)
         {
             var self = this;
 
+            self.data = self.getValue();
+
             self.cleanupDomInjections();
+
+            // TODO: see above
+
+            var usingDataTables = self.options.datatables && $.fn.DataTable;
+            if (self.options.dragRows || (usingDataTables && self.data.length === 0))
+            {
+                // refresh
+                self.refresh(function () {
+                    callback();
+                });
+            }
+            else
+            {
+                // inform data tables that we've removed a row
+                if (self._dt)
+                {
+                    self._dt.rows(childIndex).remove();//.draw(false);
+                }
+
+                callback();
+            }
         },
 
         /**
@@ -396,6 +655,12 @@
                         "default": true,
                         "description": "Whether to show or hide the actions column.",
                         "type": "boolean"
+                    },
+                    "dragRows": {
+                        "title": "Drag Rows",
+                        "default": false,
+                        "description": "Whether to enable the dragging of rows via a draggable column.  This requires DataTables and the DataTables Row Reorder Plugin.",
+                        "type": "boolean"
                     }
                 }
             });
@@ -412,6 +677,9 @@
                         "type": "object"
                     },
                     "showActionsColumn": {
+                        "type": "checkbox"
+                    },
+                    "dragRows": {
                         "type": "checkbox"
                     }
                 }
