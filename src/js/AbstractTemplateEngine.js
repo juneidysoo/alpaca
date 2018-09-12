@@ -34,9 +34,10 @@
          *
          * @param cacheKey
          * @param template
+         * @param connector
          * @param callback
          */
-        compile: function(cacheKey, template, callback)
+        compile: function(cacheKey, template, connector, callback)
         {
             var self = this;
 
@@ -81,27 +82,18 @@
                     url += "." + fileExtension;
                 }
 
-                // load the template via ajax
-                $.ajax({
-                    "url": url,
-                    "dataType": "html",
-                    "success": function(html, code, xhr)
-                    {
-                        // cleanup html
-                        html = self.cleanup(html);
+                // load the template using the connector
+                connector.loadTemplate(url, function(html) {
 
-                        self._compile(cacheKey, html, function(err) {
-                            callback(err);
-                        });
-                    },
-                    "error": function(xhr, code)
-                    {
-                        callback({
-                            "message": xhr.responseText,
-                            "xhr": xhr,
-                            "code": code
-                        }, null);
-                    }
+                    // cleanup html
+                    html = self.cleanup(html);
+
+                    self._compile(cacheKey, html, function(err) {
+                        callback(err);
+                    });
+
+                }, function(err) {
+                    callback(err);
                 });
             }
             else if (type === "html")

@@ -19,15 +19,21 @@
          */
         setValue: function(val)
         {
+            if (!val)
+            {
+                return this.base(val);
+            }
+
+            // convert to upper-case
             var upperValue = "";
 
-            for ( var i = 0; i < val.length; i++ )
+            for (var i = 0; i < val.length; i++)
             {
-                if ( i === 0 )
+                if (i === 0)
                 {
                     upperValue += val.charAt(i).toUpperCase();
                 }
-                else if (val.charAt(i-1) === ' ' ||  val.charAt(i-1) === '-' || val.charAt(i-1) === "'")
+                else if (val.charAt(i - 1) === ' ' || val.charAt(i - 1) === '-' || val.charAt(i - 1) === "'")
                 {
                     upperValue += val.charAt(i).toUpperCase();
                 }
@@ -73,7 +79,7 @@
          * @see Alpaca.Fields.TextField#getDescription
          */
         getDescription: function() {
-            return "Text Field for personal name with captical letter for first letter & after hyphen, space or apostrophe.";
+            return "Text Field for personal name with capital letter for first letter & after hyphen, space or apostrophe.";
         }
 
         /* end_builder_helpers */

@@ -25,6 +25,7 @@ var wrap        = require('gulp-wrap');
 var bump        = require('gulp-bump');
 var wrapUmd     = require("gulp-wrap-umd");
 var awspublish  = require('gulp-awspublish');
+var gulpTemplate = require('gulp-template');
 
 // custom builder_helper stripper to remove builder helper functions
 var stripper = require("./gulp/gulp-stripper");
@@ -55,6 +56,10 @@ var paths = {
             "src/js/ContainerField.js",
             "src/js/Form.js",
 
+            // cache implementations
+            "src/js/cache/memory.js",
+            "src/js/cache/null.js",
+
             // connectors
             "src/js/connectors/default.js",
             "src/js/connectors/cloudcms.js",
@@ -62,20 +67,23 @@ var paths = {
             // fields
             "src/js/fields/basic/TextField.js",
             "src/js/fields/basic/TextAreaField.js",
-            "src/js/fields/basic/CheckBoxField.js",
             "src/js/fields/basic/FileField.js",
-            "src/js/fields/basic/ListField.js",
-            "src/js/fields/basic/RadioField.js",
-            "src/js/fields/basic/SelectField.js",
             "src/js/fields/basic/NumberField.js",
             "src/js/fields/basic/ArrayField.js",
             "src/js/fields/basic/ObjectField.js",
             "src/js/fields/basic/AnyField.js",
             "src/js/fields/basic/HiddenField.js",
 
+            "src/js/fields/list/ListField.js",
+            "src/js/fields/list/CheckBoxField.js",
+            "src/js/fields/list/RadioField.js",
+            "src/js/fields/list/SelectField.js",
+            "src/js/fields/list/ChooserField.js",
+
             "src/js/fields/advanced/AddressField.js",
             "src/js/fields/advanced/CKEditorField.js",
             "src/js/fields/advanced/ColorField.js",
+            "src/js/fields/advanced/ColorPickerField.js",
             "src/js/fields/advanced/CountryField.js",
             "src/js/fields/advanced/CurrencyField.js",
             "src/js/fields/advanced/DateField.js",
@@ -94,8 +102,10 @@ var paths = {
             "src/js/fields/advanced/PasswordField.js",
             "src/js/fields/advanced/PersonalNameField.js",
             "src/js/fields/advanced/PhoneField.js",
+            "src/js/fields/advanced/PickAColorField.js",
             "src/js/fields/advanced/SearchField.js",
             "src/js/fields/advanced/StateField.js",
+            "src/js/fields/advanced/SummernoteField.js",
             "src/js/fields/advanced/TableField.js",
             "src/js/fields/advanced/TableRowField.js",
             "src/js/fields/advanced/TagField.js",
@@ -111,16 +121,21 @@ var paths = {
             "src/js/views/base.js",
 
             // i18n
+            "src/js/messages/i18n/cs_CZ.js",
             "src/js/messages/i18n/de_AT.js",
             "src/js/messages/i18n/de_DE.js",
+            "src/js/messages/i18n/el_GR.js",
             "src/js/messages/i18n/es_ES.js",
+            "src/js/messages/i18n/fi_FI.js",
             "src/js/messages/i18n/fr_FR.js",
             "src/js/messages/i18n/hr_HR.js",
             "src/js/messages/i18n/it_IT.js",
             "src/js/messages/i18n/ja_JP.js",
+            "src/js/messages/i18n/nb_NO.js",
             "src/js/messages/i18n/nl_BE.js",
             "src/js/messages/i18n/pl_PL.js",
             "src/js/messages/i18n/pt_BR.js",
+            "src/js/messages/i18n/sv_SE.js",
             "src/js/messages/i18n/zh_CN.js"
         ],
         all_views: [
@@ -224,7 +239,7 @@ gulp.task("build-templates", function(cb)
     // Mozilla
     var escapeRegExp = function(string){
             return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
+    };
 
     var processName = function(filepath)
     {
@@ -250,7 +265,7 @@ gulp.task("build-templates", function(cb)
 
         // web
         gulp.src(paths.templates["web"])
-            .pipe(handlebars())
+            .pipe(handlebars({ handlebars: require('handlebars') }))
             .pipe(wrap('Handlebars.template(<%= contents %>)'))
             .pipe(declare({
                 namespace: 'HandlebarsPrecompiled',
@@ -262,7 +277,7 @@ gulp.task("build-templates", function(cb)
 
         // bootstrap
         gulp.src(paths.templates["bootstrap"])
-            .pipe(handlebars())
+            .pipe(handlebars({ handlebars: require('handlebars') }))
             .pipe(wrap('Handlebars.template(<%= contents %>)'))
             .pipe(declare({
                 namespace: 'HandlebarsPrecompiled',
@@ -274,7 +289,7 @@ gulp.task("build-templates", function(cb)
 
         // jqueryui
         gulp.src(paths.templates["jqueryui"])
-            .pipe(handlebars())
+            .pipe(handlebars({ handlebars: require('handlebars') }))
             .pipe(wrap('Handlebars.template(<%= contents %>)'))
             .pipe(declare({
                 namespace: 'HandlebarsPrecompiled',
@@ -286,7 +301,7 @@ gulp.task("build-templates", function(cb)
 
         // jquerymobile
         gulp.src(paths.templates["jquerymobile"])
-            .pipe(handlebars())
+            .pipe(handlebars({ handlebars: require('handlebars') }))
             .pipe(wrap('Handlebars.template(<%= contents %>)'))
             .pipe(declare({
                 namespace: 'HandlebarsPrecompiled',
@@ -541,7 +556,7 @@ gulp.task("build-site", function(cb)
 gulp.task("update-site-full", function(cb) {
 
     //console.log("update-site-full start");
-    return es.concat(
+    es.concat(
 
         // copy site into web
         gulp.src("build/site/**").pipe(gulp.dest("./build/web")),
@@ -555,7 +570,8 @@ gulp.task("update-site-full", function(cb) {
             .pipe(gulp.dest('./build/web/lib/alpaca'))
 
     ).pipe(es.wait(function() {
-        //console.log("update-site-full completed");
+        console.log("update-site-full completed");
+        cb();
     })).pipe(notify({message: "Built Alpaca Web Site"}));
 });
 
@@ -637,6 +653,7 @@ gulp.task("package", function(cb) {
 
 gulp.task("default", function(cb) {
     runSequence(
+        "update-release-txt",
         "build-templates",
         ["build-scripts", "build-styles", "package"],
         function() {
@@ -1015,3 +1032,44 @@ var doReplace = function(text, token, value)
 
     return text;
 };
+
+gulp.task("update-release-txt", function() {
+
+    if (fs.existsSync("license.txt"))
+    {
+        fs.unlinkSync("license.txt");
+    }
+
+    return gulp.src("license.txt.template", {
+        "cwd": "./config"
+    })
+        .pipe(gulpTemplate({
+            version: pkg.version
+        }))
+        .pipe(rename("license.txt"))
+        .pipe(gulp.dest("."));
+
+});
+
+gulp.task("website", function(cb) {
+    runSequence("default", "site", "server", function () {
+        cb();
+    });
+});
+
+gulp.task("npmpackage", function(cb) {
+
+    var npmPkg = JSON.parse(JSON.stringify(pkg));
+    delete npmPkg.scripts.postinstall;
+    delete npmPkg.scripts.postupdate;
+
+    fs.writeFileSync("./package.json.npm", JSON.stringify(npmPkg, null, "  "));
+
+    cb();
+});
+
+gulp.task("_deploy", function(cb) {
+    runSequence("default", "site", "dist", "npmpackage", function () {
+        cb();
+    });
+});

@@ -124,7 +124,8 @@
 
             this.containerDescriptor = this.view.getTemplateDescriptor("container-" + containerTemplateType, self);
 
-            var collapsible = true;
+            // default to false
+            var collapsible = false;
 
             if (!Alpaca.isEmpty(this.view.collapsible)) {
                 collapsible = this.view.collapsible;
@@ -176,12 +177,17 @@
             }
 
             // destroy any child controls
-            Alpaca.each(this.children, function() {
+            Alpaca.each(this.children, function () {
                 this.destroy();
             });
 
             // call up to base method
             this.base();
+        },
+
+        // @Override
+        bindData: function()
+        {
         },
 
         /**
@@ -445,11 +451,12 @@
                         }
                         if (holder.length > 0)
                         {
-                            // appending into a layout binding holder
-                            $(item.containerItemEl).appendTo(holder);
-
-                            // reset domEl to allow for refresh
-                            item.domEl = holder;
+                            // create a wrapper (which will serve as the domEl)
+                            item.domEl = $("<div></div>");
+                            $(item.domEl).addClass("alpaca-layout-binding-holder");
+                            $(item.domEl).attr("alpaca-layout-binding-field-name", item.name);
+                            holder.append(item.domEl);
+                            item.domEl.append(item.containerItemEl);
                         }
                     }
 
@@ -484,6 +491,7 @@
             }
 
             self.triggerUpdate();
+
             callback();
         },
 
@@ -605,8 +613,21 @@
                 $(child.containerItemEl).attr("data-alpaca-container-item-name", child.name);
                 $(child.containerItemEl).attr("data-alpaca-container-item-parent-field-id", self.getId());
 
+                self.updateChildDOMWrapperElement(i, child);
+
                 child.updateDOMElement();
             }
+        },
+
+        /**
+         * EXTENSION POINT that allows containers to update any custom wrapper elements for child controls.
+         *
+         * @param i
+         * @param child
+         */
+        updateChildDOMWrapperElement: function(i, child)
+        {
+
         },
 
         /**
@@ -724,6 +745,10 @@
          */
         disable: function()
         {
+            if (this.options.readonly) {
+                return;
+            }
+
             this.base();
 
             for (var i = 0; i < this.children.length; i++)
@@ -737,6 +762,10 @@
          */
         enable: function()
         {
+            if (this.options.readonly) {
+                return;
+            }
+
             this.base();
 
             for (var i = 0; i < this.children.length; i++)
@@ -756,6 +785,7 @@
 
             var value = self.getContainerValue();
 
+            /*
             if (self.isDisplayOnly())
             {
                 if (value)
@@ -763,6 +793,7 @@
                     value = JSON.stringify(value, null, "  ");
                 }
             }
+            */
 
             return value;
         },
@@ -815,7 +846,7 @@
                         "title": "Collapsible",
                         "description": "Field set is collapsible if true.",
                         "type": "boolean",
-                        "default": true
+                        "default": false
                     },
                     "collapsed": {
                         "title": "Collapsed",
