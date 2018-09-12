@@ -113,10 +113,12 @@ var MatchingBraceOutdent = require("./matching_brace_outdent").MatchingBraceOutd
 var Mode = function() {
     this.HighlightRules = TextileHighlightRules;
     this.$outdent = new MatchingBraceOutdent();
+    this.$behaviour = this.$defaultBehaviour;
 };
 oop.inherits(Mode, TextMode);
 
 (function() {
+    this.type = "text";
     this.getNextLineIndent = function(state, line, tab) {
         if (state == "intag")
             return tab;
